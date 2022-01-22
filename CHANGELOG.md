@@ -1,6 +1,7 @@
 # UNRELEASED
 
-# 0.1.2 (January 6th, 2022)
+# 0.0.1 (January 23rd, 2022)
+Init project.
 
 FEATURES
 
