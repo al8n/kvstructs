@@ -1,11 +1,11 @@
+use crate::key_mut::KeyMut;
+use crate::u64_big_endian;
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use bytes::{Buf, Bytes, BytesMut};
 use core::cmp::Ordering;
 use core::ops::RangeBounds;
-use crate::u64_big_endian;
-use crate::key_mut::KeyMut;
 #[cfg(feature = "std")]
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -33,9 +33,7 @@ impl AsRef<[u8]> for Key {
 impl Key {
     #[inline]
     pub const fn null() -> Self {
-        Self {
-            data: Bytes::new(),
-        }
+        Self { data: Bytes::new() }
     }
 
     #[inline]
@@ -73,7 +71,12 @@ impl Key {
     #[cfg(feature = "std")]
     pub fn with_system_time(self, st: SystemTime) -> Self {
         let len = self.data.len() + TIMESTAMP_SIZE;
-        let ts = Bytes::from(Box::from(st.duration_since(UNIX_EPOCH).unwrap().as_secs().to_be_bytes()));
+        let ts = Bytes::from(Box::from(
+            st.duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                .to_be_bytes(),
+        ));
         self.data.chain(ts).copy_to_bytes(len).into()
     }
 
@@ -82,10 +85,15 @@ impl Key {
     #[cfg(feature = "std")]
     pub fn with_now(self) -> Self {
         let len = self.data.len() + TIMESTAMP_SIZE;
-        let ts = Bytes::from(Box::from(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs().to_be_bytes()));
+        let ts = Bytes::from(Box::from(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                .to_be_bytes(),
+        ));
         self.data.chain(ts).copy_to_bytes(len).into()
     }
-
 
     #[inline]
     pub fn parse_key_to_bytes(&self) -> Bytes {
@@ -107,7 +115,7 @@ impl Key {
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
-    
+
     /// Returns the underlying bytes
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
@@ -127,7 +135,7 @@ impl Key {
     /// will panic.
     pub fn slice(&self, range: impl RangeBounds<usize>) -> Self {
         Self {
-            data: self.data.slice(range)
+            data: self.data.slice(range),
         }
     }
 
@@ -145,7 +153,7 @@ impl Key {
     #[must_use = "consider Key::truncate if you don't need the other half"]
     pub fn split_off(&mut self, at: usize) -> Self {
         Self {
-            data: self.data.split_off(at)
+            data: self.data.split_off(at),
         }
     }
 
@@ -163,7 +171,7 @@ impl Key {
     #[must_use = "consider Key::advance if you don't need the other half"]
     pub fn split_to(&mut self, at: usize) -> Self {
         Self {
-            data: self.data.split_to(at)
+            data: self.data.split_to(at),
         }
     }
 
@@ -268,7 +276,7 @@ pub fn same_key(a: impl KeyExt, b: impl KeyExt) -> bool {
 impl<const N: usize> From<[u8; N]> for Key {
     fn from(data: [u8; N]) -> Self {
         Self {
-            data: Bytes::from(data.to_vec())
+            data: Bytes::from(data.to_vec()),
         }
     }
 }
@@ -296,9 +304,7 @@ impl_from_for_key! {
 
 impl From<Bytes> for Key {
     fn from(data: Bytes) -> Self {
-        Self {
-            data,
-        }
+        Self { data }
     }
 }
 
@@ -319,7 +325,7 @@ impl From<&[u8]> for Key {
 #[derive(Debug, Copy, Clone, Hash)]
 #[repr(transparent)]
 pub struct KeyRef<'a> {
-    data: &'a [u8]
+    data: &'a [u8],
 }
 
 impl<'a, 'b> PartialEq<KeyRef<'b>> for KeyRef<'a> {
@@ -397,7 +403,7 @@ pub trait KeyExt {
     #[inline]
     fn as_key_ref(&self) -> KeyRef {
         KeyRef {
-            data: self.as_key_slice()
+            data: self.as_key_slice(),
         }
     }
 

@@ -13,9 +13,8 @@ pub use key::*;
 mod key_mut;
 pub use key_mut::*;
 
-mod value;
 mod utils;
-
+mod value;
 
 pub use value::*;
 
@@ -35,7 +34,5 @@ fn u64_big_endian(b: &[u8]) -> u64 {
 mod tests {
 
     #[test]
-    fn test_works() {
-
-    }
+    fn test_works() {}
 }

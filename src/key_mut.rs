@@ -1,7 +1,7 @@
+use crate::{compare_key_in, same_key_in, Key};
 use bytes::BytesMut;
-use core::ops::{Deref, DerefMut};
 use core::cmp::Ordering;
-use crate::{compare_key_in, Key, same_key_in};
+use core::ops::{Deref, DerefMut};
 
 #[derive(Debug, Clone, Hash)]
 #[repr(transparent)]
@@ -66,7 +66,7 @@ impl KeyMut {
     /// This function does not allocate.
     pub fn new() -> Self {
         Self {
-            data: BytesMut::new()
+            data: BytesMut::new(),
         }
     }
 
@@ -80,7 +80,7 @@ impl KeyMut {
     ///
     pub fn with_capacity(cap: usize) -> Self {
         Self {
-            data: BytesMut::with_capacity(cap)
+            data: BytesMut::with_capacity(cap),
         }
     }
 
