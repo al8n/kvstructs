@@ -1,3 +1,5 @@
+> **[WIP]**: Please do not use this crate, it is not finished.
+
 <div align="center">
 <h1>KV-Structs</h1>
 </div>

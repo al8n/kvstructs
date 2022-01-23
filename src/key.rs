@@ -21,7 +21,7 @@ pub struct Key {
 
 impl Default for Key {
     fn default() -> Self {
-        Self::null()
+        Self::new()
     }
 }
 
@@ -35,7 +35,7 @@ impl AsRef<[u8]> for Key {
 impl Key {
     /// Returns a empty key
     #[inline]
-    pub const fn null() -> Self {
+    pub const fn new() -> Self {
         Self { data: Bytes::new() }
     }
 
@@ -259,8 +259,8 @@ pub(crate) fn compare_key_in(me: &[u8], other: &[u8]) -> Ordering {
 /// All keys should have timestamp.
 #[inline(always)]
 pub fn compare_key(a: impl KeyExt, b: impl KeyExt) -> Ordering {
-    let me = a.as_key_slice();
-    let other = b.as_key_slice();
+    let me = a.as_bytes();
+    let other = b.as_bytes();
     compare_key_in(me, other)
 }
 
@@ -286,8 +286,8 @@ pub(crate) fn same_key_in(me: &[u8], other: &[u8]) -> bool {
 /// Checks for key equality ignoring the version timestamp.
 #[inline(always)]
 pub fn same_key(a: impl KeyExt, b: impl KeyExt) -> bool {
-    let me = a.as_key_slice();
-    let other = b.as_key_slice();
+    let me = a.as_bytes();
+    let other = b.as_bytes();
     same_key_in(me, other)
 }
 
@@ -399,21 +399,21 @@ impl<'a> KeyRef<'a> {
 
 impl KeyExt for &'_ KeyRef<'_> {
     #[inline]
-    fn as_key_slice(&self) -> &[u8] {
+    fn as_bytes(&self) -> &[u8] {
         self.data
     }
 }
 
 impl KeyExt for &'_ mut KeyRef<'_> {
     #[inline]
-    fn as_key_slice(&self) -> &[u8] {
+    fn as_bytes(&self) -> &[u8] {
         self.data
     }
 }
 
 impl KeyExt for KeyRef<'_> {
     #[inline]
-    fn as_key_slice(&self) -> &[u8] {
+    fn as_bytes(&self) -> &[u8] {
         self.data
     }
 }
@@ -424,19 +424,19 @@ pub trait KeyExt {
     #[inline]
     fn as_key_ref(&self) -> KeyRef {
         KeyRef {
-            data: self.as_key_slice(),
+            data: self.as_bytes(),
         }
     }
 
     /// Parses the actual key from the key bytes.
-    ///
-    /// # Panics
-    /// If the length of key less than 8.
     #[inline]
     fn parse_key(&self) -> &[u8] {
-        let data = self.as_key_slice();
+        let data = self.as_bytes();
         let sz = data.len();
-        data[..sz - TIMESTAMP_SIZE].as_ref()
+        match sz.checked_sub(TIMESTAMP_SIZE) {
+            None => data,
+            Some(sz) => data[..sz].as_ref(),
+        }
     }
 
     /// Parses the timestamp from the key bytes.
@@ -445,7 +445,7 @@ pub trait KeyExt {
     /// If the length of key less than 8.
     #[inline]
     fn parse_timestamp(&self) -> u64 {
-        let data = self.as_key_slice();
+        let data = self.as_bytes();
         let data_len = data.len();
         if data_len <= TIMESTAMP_SIZE {
             0
@@ -454,14 +454,14 @@ pub trait KeyExt {
         }
     }
 
-    /// Returns the underlying slice of key.
-    fn as_key_slice(&self) -> &[u8];
+    /// Returns the underlying slice of key (with timestamp data).
+    fn as_bytes(&self) -> &[u8];
 
     /// Checks for key equality ignoring the version timestamp.
     #[inline]
     fn same_key(&self, other: impl KeyExt) -> bool {
-        let me = self.as_key_slice();
-        let other = other.as_key_slice();
+        let me = self.as_bytes();
+        let other = other.as_bytes();
         same_key_in(me, other)
     }
 
@@ -471,9 +471,82 @@ pub trait KeyExt {
     /// All keys should have timestamp.
     #[inline]
     fn compare_key(&self, other: impl KeyExt) -> Ordering {
-        let me = self.as_key_slice();
-        let other = other.as_key_slice();
+        let me = self.as_bytes();
+        let other = other.as_bytes();
         compare_key_in(me, other)
+    }
+
+    /// Returns whether the slice self begins with prefix.
+    #[inline]
+    fn has_prefix(&self, other: impl KeyExt) -> bool {
+        let src = self.parse_key();
+        let prefix = other.parse_key();
+        let pl = prefix.len();
+        if src.len() < pl {
+            return false;
+        }
+
+        src[0..pl].eq(prefix)
+    }
+
+    /// Returns whether the slice self begins with suffix.
+    #[inline]
+    fn has_suffix(&self, other: impl KeyExt) -> bool {
+        let src = self.parse_key();
+        let suffix = other.parse_key();
+        let pl = suffix.len() - 1;
+        if src.len() <= pl {
+            return false;
+        }
+
+        src[pl..].eq(suffix)
+    }
+
+    /// Finds the longest shared prefix
+    #[inline]
+    fn longest_prefix(&self, other: impl KeyExt) -> &[u8] {
+        let k1 = self.parse_key();
+        let k2 = other.parse_key();
+        let max = k1.len().min(k2.len());
+
+        let mut n = max - 1;
+        for i in 0..max {
+            if k1[i].ne(&k2[i]) {
+                n = i;
+                break;
+            }
+        }
+        &k1[..n]
+    }
+
+    /// Finds the longest shared suffix
+    #[inline]
+    fn longest_suffix(&self, other: impl KeyExt) -> &[u8] {
+        let k1 = self.parse_key();
+        let k1_len = k1.len();
+        let k2 = other.parse_key();
+        let k2_len = k2.len();
+        return if k1_len < k2_len {
+            let max = k1_len;
+            let mut n = max;
+            for i in 0..max {
+                if k1[k1_len - i - 1].ne(&k2[k2_len - i - 1]) {
+                    n = i;
+                    break;
+                }
+            }
+            &k1[max - n..]
+        } else {
+            let max = k2_len;
+            let mut n = max;
+            for i in 0..max {
+                if k1[k1_len - i - 1].ne(&k2[k2_len - i - 1]) {
+                    n = i;
+                    break;
+                }
+            }
+            &k1[k1_len - k2_len + max - n..]
+        };
     }
 }
 
@@ -536,21 +609,21 @@ macro_rules! impl_key_ext {
         $(
         impl KeyExt for $ty {
             #[inline]
-            fn as_key_slice(&self) -> &[u8] {
+            fn as_bytes(&self) -> &[u8] {
                 $ty::$conv(self)
             }
         }
 
         impl<'a> KeyExt for &'a $ty {
             #[inline]
-            fn as_key_slice(&self) -> &[u8] {
+            fn as_bytes(&self) -> &[u8] {
                 $ty::$conv(self)
             }
         }
 
         impl<'a> KeyExt for &'a mut $ty {
             #[inline]
-            fn as_key_slice(&self) -> &[u8] {
+            fn as_bytes(&self) -> &[u8] {
                 $ty::$conv(self)
             }
         }
@@ -599,21 +672,21 @@ impl<const N: usize> PartialEq<[u8; N]> for Key {
 
 impl<const N: usize> KeyExt for [u8; N] {
     #[inline]
-    fn as_key_slice(&self) -> &[u8] {
+    fn as_bytes(&self) -> &[u8] {
         self
     }
 }
 
 impl<'a, const N: usize> KeyExt for &'a [u8; N] {
     #[inline]
-    fn as_key_slice(&self) -> &[u8] {
+    fn as_bytes(&self) -> &[u8] {
         self.as_slice()
     }
 }
 
 impl<'a, const N: usize> KeyExt for &'a mut [u8; N] {
     #[inline]
-    fn as_key_slice(&self) -> &[u8] {
+    fn as_bytes(&self) -> &[u8] {
         self.as_slice()
     }
 }
