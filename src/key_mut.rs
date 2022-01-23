@@ -1,12 +1,20 @@
 use crate::{compare_key_in, same_key_in, Key};
 use bytes::BytesMut;
 use core::cmp::Ordering;
+use core::hash::{Hash, Hasher};
 use core::ops::{Deref, DerefMut};
 
-#[derive(Debug, Clone, Hash)]
+/// A general mutable Key for key-value storage, the underlying is u8 slice.
+#[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct KeyMut {
     data: BytesMut,
+}
+
+impl Default for KeyMut {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Deref for KeyMut {
@@ -42,6 +50,12 @@ impl PartialEq<Self> for KeyMut {
 }
 
 impl Eq for KeyMut {}
+
+impl Hash for KeyMut {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.data.hash(state)
+    }
+}
 
 impl PartialOrd<Self> for KeyMut {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

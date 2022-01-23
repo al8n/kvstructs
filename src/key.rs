@@ -5,13 +5,15 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use bytes::{Buf, Bytes, BytesMut};
 use core::cmp::Ordering;
+use core::hash::{Hash, Hasher};
 use core::ops::RangeBounds;
 #[cfg(feature = "std")]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const TIMESTAMP_SIZE: usize = core::mem::size_of::<u64>();
 
-#[derive(Debug, Clone, Hash)]
+/// A general Key for key-value storage, the underlying is u8 slice.
+#[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct Key {
     data: Bytes,
@@ -31,28 +33,33 @@ impl AsRef<[u8]> for Key {
 }
 
 impl Key {
+    /// Returns a empty key
     #[inline]
     pub const fn null() -> Self {
         Self { data: Bytes::new() }
     }
 
+    /// Returns a Key with data and timestamp.
     #[inline]
     pub fn from_with_timestamp(data: Vec<u8>, ts: u64) -> Self {
         Self::from(data).with_timestamp(ts)
     }
 
+    /// Returns a Key with data and system time as timestamp.
     #[cfg(feature = "std")]
     #[inline]
     pub fn from_with_system_time(data: Vec<u8>, st: SystemTime) -> Self {
         Self::from(data).with_system_time(st)
     }
 
+    /// Returns a Key with data and the current time as timestamp
     #[cfg(feature = "std")]
     #[inline]
     pub fn from_with_now(data: Vec<u8>) -> Self {
         Self::from(data).with_now()
     }
 
+    /// Returns a Key by copying the slice data.
     #[inline]
     pub fn copy_from_slice(data: &[u8]) -> Self {
         Bytes::copy_from_slice(data).into()
@@ -95,12 +102,17 @@ impl Key {
         self.data.chain(ts).copy_to_bytes(len).into()
     }
 
+    /// Returns a new Key without timestamp.
     #[inline]
-    pub fn parse_key_to_bytes(&self) -> Bytes {
+    pub fn parse_new_key(&self) -> Self {
         let sz = self.len();
         match sz.checked_sub(TIMESTAMP_SIZE) {
-            None => self.data.clone(),
-            Some(sz) => self.data.slice(..sz),
+            None => Self {
+                data: self.data.clone(),
+            },
+            Some(sz) => Self {
+                data: self.data.slice(..sz),
+            },
         }
     }
 
@@ -205,6 +217,12 @@ impl PartialEq<Self> for Key {
 
 impl Eq for Key {}
 
+impl Hash for Key {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.data.hash(state)
+    }
+}
+
 impl PartialOrd<Self> for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -223,8 +241,8 @@ impl Ord for Key {
 
 #[inline(always)]
 pub(crate) fn compare_key_in(me: &[u8], other: &[u8]) -> Ordering {
-    let sb = me.len().checked_sub(TIMESTAMP_SIZE).unwrap_or(0);
-    let ob = other.len().checked_sub(TIMESTAMP_SIZE).unwrap_or(0);
+    let sb = me.len().saturating_sub(TIMESTAMP_SIZE);
+    let ob = other.len().saturating_sub(TIMESTAMP_SIZE);
     let (s_key_part, s_ts_part) = me.split_at(sb);
     let (o_key_part, o_ts_part) = other.split_at(ob);
 
@@ -322,6 +340,7 @@ impl From<&[u8]> for Key {
     }
 }
 
+/// KeyRef can only contains a underlying u8 slice of Key
 #[derive(Debug, Copy, Clone, Hash)]
 #[repr(transparent)]
 pub struct KeyRef<'a> {
@@ -353,6 +372,7 @@ impl<'a> Ord for KeyRef<'a> {
 }
 
 impl<'a> KeyRef<'a> {
+    /// Copy KeyRef to a new Key.
     #[inline]
     pub fn to_key(&self) -> Key {
         Key::copy_from_slice(self.data)
@@ -373,7 +393,7 @@ impl<'a> KeyRef<'a> {
     /// Returns the underlying bytes
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
-        self.data.as_ref()
+        self.data
     }
 }
 
@@ -398,6 +418,7 @@ impl KeyExt for KeyRef<'_> {
     }
 }
 
+/// Extensions for Key
 pub trait KeyExt {
     /// Returns a KeyRef.
     #[inline]
@@ -510,7 +531,7 @@ macro_rules! impl_partial_eq_ord {
     };
 }
 
-macro_rules! impl_as_key_ref {
+macro_rules! impl_key_ext {
     ($($ty:tt::$conv:tt), +$(,)?) => {
         $(
         impl KeyExt for $ty {
@@ -552,7 +573,7 @@ impl_partial_eq_ord! {
     String,
 }
 
-impl_as_key_ref! {
+impl_key_ext! {
     Bytes::as_ref,
     BytesMut::as_ref,
     BoxBytes::as_ref,
