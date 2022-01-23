@@ -10,8 +10,12 @@ extern crate alloc;
 mod key;
 pub use key::*;
 
+mod key_mut;
+pub use key_mut::*;
+
 mod value;
 mod utils;
+
 
 pub use value::*;
 

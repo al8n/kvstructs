@@ -1,15 +1,21 @@
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::cmp::Ordering;
 use bytes::{Buf, Bytes, BytesMut};
+use core::cmp::Ordering;
+use core::ops::RangeBounds;
 use crate::u64_big_endian;
+use crate::key_mut::KeyMut;
+#[cfg(feature = "std")]
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const TIMESTAMP_SIZE: usize = core::mem::size_of::<u64>();
 
 #[derive(Debug, Clone, Hash)]
 #[repr(transparent)]
-pub struct Key(Bytes);
+pub struct Key {
+    data: Bytes,
+}
 
 impl Default for Key {
     fn default() -> Self {
@@ -20,35 +26,33 @@ impl Default for Key {
 impl AsRef<[u8]> for Key {
     #[inline]
     fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
+        self.data.as_ref()
     }
 }
 
 impl Key {
     #[inline]
     pub const fn null() -> Self {
-        Self(Bytes::new())
+        Self {
+            data: Bytes::new(),
+        }
     }
 
     #[inline]
-    pub fn from_utf8_slice_and_ts(data: &[u8], ts: u64) -> Self {
-        let len = data.len() + 8;
-        data.chain(ts.to_be_bytes().as_ref()).copy_to_bytes(len).into()
+    pub fn from_with_timestamp(data: Vec<u8>, ts: u64) -> Self {
+        Self::from(data).with_timestamp(ts)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
-    pub fn from_utf8_and_ts(data: Vec<u8>, ts: u64) -> Self {
-        let len = data.len() + 8;
-        Bytes::from(data)
-            .chain(ts.to_be_bytes().as_ref())
-            .copy_to_bytes(len)
-            .into()
+    pub fn from_with_system_time(data: Vec<u8>, st: SystemTime) -> Self {
+        Self::from(data).with_system_time(st)
     }
 
+    #[cfg(feature = "std")]
     #[inline]
-    pub fn from_bytes_and_ts(data: Bytes, ts: u64) -> Self {
-        let len = data.len() + 8;
-        data.chain(ts.to_be_bytes().as_ref()).copy_to_bytes(len).into()
+    pub fn from_with_now(data: Vec<u8>) -> Self {
+        Self::from(data).with_now()
     }
 
     #[inline]
@@ -59,90 +63,139 @@ impl Key {
     /// Generates a new key by appending timestamp to key.
     #[inline]
     pub fn with_timestamp(self, ts: u64) -> Self {
-        let len = self.0.len() + 8;
+        let len = self.data.len() + TIMESTAMP_SIZE;
         let ts = Bytes::from(Box::from((u64::MAX - ts).to_be_bytes()));
-        self.0.chain(ts).copy_to_bytes(len).into()
+        self.data.chain(ts).copy_to_bytes(len).into()
     }
 
-
+    /// Generates a new key by appending the given UNIX system time to key.
     #[inline]
-    pub fn parse_key(&self) -> &[u8] {
-        let sz = self.len();
-        self.0[..sz - TIMESTAMP_SIZE].as_ref()
+    #[cfg(feature = "std")]
+    pub fn with_system_time(self, st: SystemTime) -> Self {
+        let len = self.data.len() + TIMESTAMP_SIZE;
+        let ts = Bytes::from(Box::from(st.duration_since(UNIX_EPOCH).unwrap().as_secs().to_be_bytes()));
+        self.data.chain(ts).copy_to_bytes(len).into()
     }
+
+    /// Generates a new key by appending the current UNIX system time to key.
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn with_now(self) -> Self {
+        let len = self.data.len() + TIMESTAMP_SIZE;
+        let ts = Bytes::from(Box::from(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs().to_be_bytes()));
+        self.data.chain(ts).copy_to_bytes(len).into()
+    }
+
 
     #[inline]
     pub fn parse_key_to_bytes(&self) -> Bytes {
         let sz = self.len();
-        self.0.slice(..sz - TIMESTAMP_SIZE)
-    }
-
-    /// parses the timestamp from the key bytes.
-    /// 
-    /// # Panics
-    /// If the length of key less than 8.
-    #[inline]
-    pub fn parse_timestamp(&self) -> u64 {
-        if self.len() <= TIMESTAMP_SIZE {
-            0
-        } else {
-            u64::MAX - u64_big_endian(&self.0[self.len() - TIMESTAMP_SIZE..])
+        match sz.checked_sub(TIMESTAMP_SIZE) {
+            None => self.data.clone(),
+            Some(sz) => self.data.slice(..sz),
         }
     }
 
     /// Returns the number of bytes contained in this Key.
     #[inline]
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.data.len()
     }
 
     /// Returns true if the Key has a length of 0.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.data.is_empty()
     }
     
     /// Returns the underlying bytes
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
-        self.0.as_ref()
+        self.data.as_ref()
     }
 
-    /// Checks for key equality ignoring the version timestamp.
-    #[inline]
-    pub fn same_key(&self, other: impl AsKeyRef) -> bool {
-        same_key(self, other)
+    /// Returns a slice of self for the provided range.
+    ///
+    /// This will increment the reference count for the underlying memory and
+    /// return a new `Key` handle set to the slice.
+    ///
+    /// This operation is `O(1)`.
+    ///
+    /// # Panics
+    ///
+    /// Requires that `begin <= end` and `end <= self.len()`, otherwise slicing
+    /// will panic.
+    pub fn slice(&self, range: impl RangeBounds<usize>) -> Self {
+        Self {
+            data: self.data.slice(range)
+        }
     }
 
-    /// Checks the key without timestamp and checks the timestamp if keyNoTs
-    /// is same.
-    /// a<timestamp> would be sorted higher than aa<timestamp> if we use bytes.compare
-    /// All keys should have timestamp.
-    #[inline]
-    pub fn compare_key(&self, other: impl AsKeyRef) -> Ordering {
-        compare_key(self, other)
-    } 
+    /// Splits the key into two at the given index.
+    ///
+    /// Afterwards `self` contains elements `[0, at)`, and the returned `Key`
+    /// contains elements `[at, len)`.
+    ///
+    /// This is an `O(1)` operation that just increases the reference count and
+    /// sets a few indices.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at > len`.
+    #[must_use = "consider Key::truncate if you don't need the other half"]
+    pub fn split_off(&mut self, at: usize) -> Self {
+        Self {
+            data: self.data.split_off(at)
+        }
+    }
+
+    /// Splits the key into two at the given index.
+    ///
+    /// Afterwards `self` contains elements `[at, len)`, and the returned
+    /// `Key` contains elements `[0, at)`.
+    ///
+    /// This is an `O(1)` operation that just increases the reference count and
+    /// sets a few indices.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at > len`.
+    #[must_use = "consider Key::advance if you don't need the other half"]
+    pub fn split_to(&mut self, at: usize) -> Self {
+        Self {
+            data: self.data.split_to(at)
+        }
+    }
+
+    /// Shortens the buffer, keeping the first `len` bytes and dropping the
+    /// rest.
+    ///
+    /// If `len` is greater than the buffer's current length, this has no
+    /// effect.
+    ///
+    /// The [`split_off`] method can emulate `truncate`, but this causes the
+    /// excess bytes to be returned instead of dropped.
+    ///
+    /// [`split_off`]: #method.split_off
+    pub fn truncate(&mut self, len: usize) {
+        self.data.truncate(len)
+    }
+
+    /// Remove the timestamp(if exists) from the key
+    pub fn truncate_timestamp(&mut self) {
+        if let Some(sz) = self.data.len().checked_sub(TIMESTAMP_SIZE) {
+            self.data.truncate(sz)
+        }
+    }
 }
 
 impl PartialEq<Self> for Key {
     fn eq(&self, other: &Self) -> bool {
-        self.same_key(other)
+        same_key_in(self.data.as_ref(), other.data.as_ref())
     }
 }
 
 impl Eq for Key {}
-
-// impl<'a> PartialEq<KeyRef<'a>> for Key {
-//     fn eq(&self, other: &KeyRef<'a>) -> bool {
-//         same_key(self, other)
-//     }
-// }
-//
-// impl<'a> PartialOrd<KeyRef<'a>> for Key {
-//     fn partial_cmp(&self, other: &KeyRef<'a>) -> Option<Ordering> {
-//         Some(compare_key(self, other))
-//     }
-// }
 
 impl PartialOrd<Self> for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -151,23 +204,17 @@ impl PartialOrd<Self> for Key {
 }
 
 impl Ord for Key {
-    /// cmp checks the key without timestamp and checks the timestamp if keyNoTs
+    /// Checks the key without timestamp and checks the timestamp if keyNoTs
     /// is same.
     /// a<timestamp> would be sorted higher than aa<timestamp> if we use bytes.compare
     /// All keys should have timestamp.
     fn cmp(&self, other: &Self) -> Ordering {
-        compare_key(self, other)
+        compare_key_in(self.data.as_ref(), other.data.as_ref())
     }
 }
 
-/// Checks the key without timestamp and checks the timestamp if keyNoTs
-/// is same.
-/// a<timestamp> would be sorted higher than aa<timestamp> if we use bytes.compare
-/// All keys should have timestamp.
 #[inline(always)]
-pub fn compare_key(a: impl AsKeyRef, b: impl AsKeyRef) -> Ordering {
-    let me = a.as_key_slice();
-    let other = b.as_key_slice();
+pub(crate) fn compare_key_in(me: &[u8], other: &[u8]) -> Ordering {
     let sb = me.len().checked_sub(TIMESTAMP_SIZE).unwrap_or(0);
     let ob = other.len().checked_sub(TIMESTAMP_SIZE).unwrap_or(0);
     let (s_key_part, s_ts_part) = me.split_at(sb);
@@ -180,24 +227,49 @@ pub fn compare_key(a: impl AsKeyRef, b: impl AsKeyRef) -> Ordering {
     }
 }
 
+/// Checks the key without timestamp and checks the timestamp if keyNoTs
+/// is same.
+/// a<timestamp> would be sorted higher than aa<timestamp> if we use bytes.compare
+/// All keys should have timestamp.
 #[inline(always)]
-pub fn same_key(a: impl AsKeyRef, b: impl AsKeyRef) -> bool {
+pub fn compare_key(a: impl KeyExt, b: impl KeyExt) -> Ordering {
     let me = a.as_key_slice();
     let other = b.as_key_slice();
+    compare_key_in(me, other)
+}
+
+#[inline(always)]
+pub(crate) fn same_key_in(me: &[u8], other: &[u8]) -> bool {
     let sl = me.len();
     let ol = other.len();
     if sl != ol {
         false
     } else {
-        let s = &me[..sl - TIMESTAMP_SIZE];
-        let o = &other[..ol - TIMESTAMP_SIZE];
+        let s = match sl.checked_sub(TIMESTAMP_SIZE) {
+            None => me,
+            Some(sz) => me[..sz].as_ref(),
+        };
+        let o = match ol.checked_sub(TIMESTAMP_SIZE) {
+            None => me,
+            Some(sz) => other[..sz].as_ref(),
+        };
         s.eq(o)
     }
 }
 
+/// Checks for key equality ignoring the version timestamp.
+#[inline(always)]
+pub fn same_key(a: impl KeyExt, b: impl KeyExt) -> bool {
+    let me = a.as_key_slice();
+    let other = b.as_key_slice();
+    same_key_in(me, other)
+}
+
 impl<const N: usize> From<[u8; N]> for Key {
     fn from(data: [u8; N]) -> Self {
-        Self(Bytes::from(data.to_vec()))
+        Self {
+            data: Bytes::from(data.to_vec())
+        }
     }
 }
 
@@ -206,7 +278,9 @@ macro_rules! impl_from_for_key {
         $(
         impl From<$ty> for Key {
             fn from(val: $ty) -> Self {
-                Self(Bytes::from(val))
+                Self {
+                    data: Bytes::from(val),
+                }
             }
         }
         )*
@@ -222,13 +296,17 @@ impl_from_for_key! {
 
 impl From<Bytes> for Key {
     fn from(data: Bytes) -> Self {
-        Self(data)
+        Self {
+            data,
+        }
     }
 }
 
 impl From<BytesMut> for Key {
     fn from(data: BytesMut) -> Self {
-        Self(data.freeze())
+        Self {
+            data: data.freeze(),
+        }
     }
 }
 
@@ -274,25 +352,6 @@ impl<'a> KeyRef<'a> {
         Key::copy_from_slice(self.data)
     }
 
-    #[inline]
-    pub fn parse_key(&self) -> &[u8] {
-        let sz = self.len();
-        self.data[..sz - TIMESTAMP_SIZE].as_ref()
-    }
-
-    /// parses the timestamp from the key bytes.
-    ///
-    /// # Panics
-    /// If the length of key less than 8.
-    #[inline]
-    pub fn parse_timestamp(&self) -> u64 {
-        if self.len() <= TIMESTAMP_SIZE {
-            0
-        } else {
-            u64::MAX - u64_big_endian(&self.data[self.len() - TIMESTAMP_SIZE..])
-        }
-    }
-
     /// Returns the number of bytes contained in this Key.
     #[inline]
     pub fn len(&self) -> usize {
@@ -310,45 +369,31 @@ impl<'a> KeyRef<'a> {
     pub fn as_slice(&self) -> &[u8] {
         self.data.as_ref()
     }
-
-    /// Checks for key equality ignoring the version timestamp.
-    #[inline]
-    pub fn same_key(&self, other: impl AsKeyRef) -> bool {
-        same_key(self, other)
-    }
-
-    /// Checks the key without timestamp and checks the timestamp if keyNoTs
-    /// is same.
-    /// a<timestamp> would be sorted higher than aa<timestamp> if we use bytes.compare
-    /// All keys should have timestamp.
-    #[inline]
-    pub fn compare_key(&self, other: impl AsKeyRef) -> Ordering {
-        compare_key(self, other)
-    }
 }
 
-impl AsKeyRef for &'_ KeyRef<'_> {
+impl KeyExt for &'_ KeyRef<'_> {
     #[inline]
     fn as_key_slice(&self) -> &[u8] {
         self.data
     }
 }
 
-impl AsKeyRef for &'_ mut KeyRef<'_> {
+impl KeyExt for &'_ mut KeyRef<'_> {
     #[inline]
     fn as_key_slice(&self) -> &[u8] {
         self.data
     }
 }
 
-impl AsKeyRef for KeyRef<'_> {
+impl KeyExt for KeyRef<'_> {
     #[inline]
     fn as_key_slice(&self) -> &[u8] {
         self.data
     }
 }
 
-pub trait AsKeyRef {
+pub trait KeyExt {
+    /// Returns a KeyRef.
     #[inline]
     fn as_key_ref(&self) -> KeyRef {
         KeyRef {
@@ -356,7 +401,53 @@ pub trait AsKeyRef {
         }
     }
 
+    /// Parses the actual key from the key bytes.
+    ///
+    /// # Panics
+    /// If the length of key less than 8.
+    #[inline]
+    fn parse_key(&self) -> &[u8] {
+        let data = self.as_key_slice();
+        let sz = data.len();
+        data[..sz - TIMESTAMP_SIZE].as_ref()
+    }
+
+    /// Parses the timestamp from the key bytes.
+    ///
+    /// # Panics
+    /// If the length of key less than 8.
+    #[inline]
+    fn parse_timestamp(&self) -> u64 {
+        let data = self.as_key_slice();
+        let data_len = data.len();
+        if data_len <= TIMESTAMP_SIZE {
+            0
+        } else {
+            u64::MAX - u64_big_endian(&data[data_len - TIMESTAMP_SIZE..])
+        }
+    }
+
+    /// Returns the underlying slice of key.
     fn as_key_slice(&self) -> &[u8];
+
+    /// Checks for key equality ignoring the version timestamp.
+    #[inline]
+    fn same_key(&self, other: impl KeyExt) -> bool {
+        let me = self.as_key_slice();
+        let other = other.as_key_slice();
+        same_key_in(me, other)
+    }
+
+    /// Checks the key without timestamp and checks the timestamp if keyNoTs
+    /// is same.
+    /// a<timestamp> would be sorted higher than aa<timestamp> if we use bytes.compare
+    /// All keys should have timestamp.
+    #[inline]
+    fn compare_key(&self, other: impl KeyExt) -> Ordering {
+        let me = self.as_key_slice();
+        let other = other.as_key_slice();
+        compare_key_in(me, other)
+    }
 }
 
 macro_rules! impl_partial_eq_ord {
@@ -416,21 +507,21 @@ macro_rules! impl_partial_eq_ord {
 macro_rules! impl_as_key_ref {
     ($($ty:tt::$conv:tt), +$(,)?) => {
         $(
-        impl AsKeyRef for $ty {
+        impl KeyExt for $ty {
             #[inline]
             fn as_key_slice(&self) -> &[u8] {
                 $ty::$conv(self)
             }
         }
 
-        impl<'a> AsKeyRef for &'a $ty {
+        impl<'a> KeyExt for &'a $ty {
             #[inline]
             fn as_key_slice(&self) -> &[u8] {
                 $ty::$conv(self)
             }
         }
 
-        impl<'a> AsKeyRef for &'a mut $ty {
+        impl<'a> KeyExt for &'a mut $ty {
             #[inline]
             fn as_key_slice(&self) -> &[u8] {
                 $ty::$conv(self)
@@ -448,6 +539,7 @@ impl_partial_eq_ord! {
     Bytes,
     BytesMut,
     BoxBytes,
+    KeyMut,
     U8Bytes,
     VecBytes,
     str,
@@ -459,6 +551,7 @@ impl_as_key_ref! {
     BytesMut::as_ref,
     BoxBytes::as_ref,
     Key::as_ref,
+    KeyMut::as_ref,
     U8Bytes::as_ref,
     VecBytes::as_slice,
     str::as_bytes,
@@ -477,21 +570,21 @@ impl<const N: usize> PartialEq<[u8; N]> for Key {
     }
 }
 
-impl<const N: usize> AsKeyRef for [u8; N] {
+impl<const N: usize> KeyExt for [u8; N] {
     #[inline]
     fn as_key_slice(&self) -> &[u8] {
         self
     }
 }
 
-impl<'a, const N: usize> AsKeyRef for &'a [u8; N] {
+impl<'a, const N: usize> KeyExt for &'a [u8; N] {
     #[inline]
     fn as_key_slice(&self) -> &[u8] {
         self.as_slice()
     }
 }
 
-impl<'a, const N: usize> AsKeyRef for &'a mut [u8; N] {
+impl<'a, const N: usize> KeyExt for &'a mut [u8; N] {
     #[inline]
     fn as_key_slice(&self) -> &[u8] {
         self.as_slice()
