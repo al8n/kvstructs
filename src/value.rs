@@ -33,11 +33,11 @@ const VALUE_OFFSET: usize = 18;
 #[derive(Default, Debug, Eq, PartialEq, Clone)]
 #[repr(C)]
 pub struct Value {
-    meta: u8,
-    user_meta: u8,
-    expires_at: u64,
-    version: u64, // This field is not serialized. Only for internal usage.
-    value: Bytes,
+    pub(crate) meta: u8,
+    pub(crate) user_meta: u8,
+    pub(crate) expires_at: u64,
+    pub(crate) version: u64, // This field is not serialized. Only for internal usage.
+    pub(crate) value: Bytes,
 }
 
 impl Into<Bytes> for Value {
@@ -62,38 +62,11 @@ impl Value {
         }
     }
 
-    pub fn decode_from_bytes(buf: Bytes) -> Self {
-        let meta = buf[0];
-        let user_meta = buf[1];
-        let (expires_at, sz) = binary_uvarint(&buf[2..]);
-        let value = buf.slice(2 + sz..);
-
-        Self {
-            meta,
-            user_meta,
-            expires_at,
-            version: 0,
-            value,
-        }
+    /// Returns the version for this value
+    #[inline]
+    pub fn get_version(&self) -> u64 {
+        self.version
     }
-
-    /// decode uses the length of the slice to infer the length of the Value field.
-    pub fn decode(buf: &[u8]) -> Self {
-        let meta = buf[0];
-        let user_meta = buf[1];
-        let (expires_at, sz) = binary_uvarint(&buf[2..]);
-        let value = buf[2 + sz..].to_vec().into();
-
-        Self {
-            meta,
-            user_meta,
-            expires_at,
-            version: 0,
-            value,
-        }
-    }
-
-
 }
 
 impl ValueExt for Value {
@@ -120,11 +93,6 @@ impl ValueExt for Value {
     #[inline]
     fn get_expires_at(&self) -> u64 {
         self.expires_at
-    }
-
-    #[inline]
-    fn get_version(&self) -> u64 {
-        self.version
     }
 }
 
@@ -169,18 +137,20 @@ impl_from_for_value! {
 }
 
 pub trait ValueExt {
-
+    /// Returns the value data
     fn parse_value(&self) -> &[u8];
 
+    /// Returns the value data, shallow copy
     fn parse_value_to_bytes(&self) -> Bytes;
 
+    /// Get the meta of the value
     fn get_meta(&self) -> u8;
 
+    /// Get the user meta
     fn get_user_meta(&self) -> u8;
 
+    /// Returns the expiration time (unix timestamp) for this value
     fn get_expires_at(&self) -> u64;
-
-    fn get_version(&self) -> u64;
 
     /// Returns a [`ValueRef`]
     ///
@@ -232,10 +202,50 @@ pub trait ValueExt {
         data.push(self.get_user_meta());
         put_binary_uvarint_to_vec(data.as_mut(), self.get_expires_at());
 
+        let expires_sz = data.len() - 2;
         let meta = Bytes::from(data);
         let val = self.parse_value_to_bytes();
         let enc_len = meta.len() + val.len();
-        EncodedValue::from(meta.chain(val).copy_to_bytes(enc_len))
+
+        EncodedValue {
+            data: meta.chain(val).copy_to_bytes(enc_len),
+            expires_sz: expires_sz as u8
+        }
+    }
+
+
+    /// Decodes value from slice.
+    #[inline]
+    fn decode(src: &[u8]) -> Value {
+        let meta = src[0];
+        let user_meta = src[1];
+        let (expires_at, sz) = binary_uvarint(&src[2..]);
+        let value = src[2 + sz..].to_vec().into();
+
+        Value {
+            meta,
+            user_meta,
+            expires_at,
+            version: 0,
+            value,
+        }
+    }
+
+    /// Decode value from Bytes
+    #[inline]
+    fn decode_bytes(src: Bytes) -> Value {
+        let meta = src[0];
+        let user_meta = src[1];
+        let (expires_at, sz) = binary_uvarint(&src[2..]);
+        let value = src.slice(2 + sz..);
+
+        Value {
+            meta,
+            user_meta,
+            expires_at,
+            version: 0,
+            value,
+        }
     }
 }
 
@@ -271,25 +281,32 @@ impl<'a> ValueRef<'a> {
     }
 
     #[inline]
-    pub fn get_meta(&self) -> u8 {
-        self.meta
-    }
+    pub fn get_version(&self) -> u64 { self.version }
+}
 
+impl<'a> ValueExt for ValueRef<'a> {
     #[inline]
-    pub fn get_user_meta(&self) -> u8 {
-        self.user_meta
-    }
-
-    #[inline]
-    pub fn get_expires_at(&self) -> u64 {
-        self.expires_at
-    }
-
-    #[inline]
-    pub fn get_val(&self) -> &[u8] {
+    fn parse_value(&self) -> &[u8] {
         self.value
     }
 
     #[inline]
-    pub fn get_version(&self) -> u64 { self.version }
+    fn parse_value_to_bytes(&self) -> Bytes {
+        Bytes::copy_from_slice(self.value)
+    }
+
+    #[inline]
+    fn get_meta(&self) -> u8 {
+        self.meta
+    }
+
+    #[inline]
+    fn get_user_meta(&self) -> u8 {
+        self.user_meta
+    }
+
+    #[inline]
+    fn get_expires_at(&self) -> u64 {
+        self.expires_at
+    }
 }

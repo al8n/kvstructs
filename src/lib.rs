@@ -82,4 +82,9 @@ fn binary_uvarint_allocate(mut x: u64) -> Vec<u8> {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    #[test]
+    fn test() {
+        eprintln!("here");
+    }
+}
