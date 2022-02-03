@@ -1,5 +1,6 @@
 use crate::key_mut::KeyMut;
 use crate::u64_big_endian;
+use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -476,78 +477,7 @@ pub trait KeyExt {
         compare_key_in(me, other)
     }
 
-    /// Returns whether the slice self begins with prefix.
-    #[inline]
-    fn has_prefix(&self, other: impl KeyExt) -> bool {
-        let src = self.parse_key();
-        let prefix = other.parse_key();
-        let pl = prefix.len();
-        if src.len() < pl {
-            return false;
-        }
-
-        src[0..pl].eq(prefix)
-    }
-
-    /// Returns whether the slice self begins with suffix.
-    #[inline]
-    fn has_suffix(&self, other: impl KeyExt) -> bool {
-        let src = self.parse_key();
-        let suffix = other.parse_key();
-        let pl = suffix.len() - 1;
-        if src.len() <= pl {
-            return false;
-        }
-
-        src[pl..].eq(suffix)
-    }
-
-    /// Finds the longest shared prefix
-    #[inline]
-    fn longest_prefix(&self, other: impl KeyExt) -> &[u8] {
-        let k1 = self.parse_key();
-        let k2 = other.parse_key();
-        let max = k1.len().min(k2.len());
-
-        let mut n = max - 1;
-        for i in 0..max {
-            if k1[i].ne(&k2[i]) {
-                n = i;
-                break;
-            }
-        }
-        &k1[..n]
-    }
-
-    /// Finds the longest shared suffix
-    #[inline]
-    fn longest_suffix(&self, other: impl KeyExt) -> &[u8] {
-        let k1 = self.parse_key();
-        let k1_len = k1.len();
-        let k2 = other.parse_key();
-        let k2_len = k2.len();
-        return if k1_len < k2_len {
-            let max = k1_len;
-            let mut n = max;
-            for i in 0..max {
-                if k1[k1_len - i - 1].ne(&k2[k2_len - i - 1]) {
-                    n = i;
-                    break;
-                }
-            }
-            &k1[max - n..]
-        } else {
-            let max = k2_len;
-            let mut n = max;
-            for i in 0..max {
-                if k1[k1_len - i - 1].ne(&k2[k2_len - i - 1]) {
-                    n = i;
-                    break;
-                }
-            }
-            &k1[k1_len - k2_len + max - n..]
-        };
-    }
+    impl_psfix_suites!(KeyExt::parse_key, u8, "u8");
 }
 
 macro_rules! impl_partial_eq_ord {

@@ -14,7 +14,7 @@ const VERSION_OFFSET: usize = 10;
 const VALUE_OFFSET: usize = 18;
 
 /// Value represents the value info that can be associated with a key, but also the internal
-/// Meta field.
+/// Meta field. The data in the Value is not mutable.
 ///
 /// # Design for Value
 ///
@@ -25,7 +25,7 @@ const VALUE_OFFSET: usize = 18;
 ///
 /// ```text
 /// +----------+-----------------+--------------------+--------------------+--------------------+
-/// |   meta   |    user meta    |     expiration     |      version       |        value       |
+/// |   meta   |    user meta    |     expiration     |      version       |        data        |
 /// +----------+-----------------+--------------------+--------------------+--------------------+
 /// |  1 byte  |      1 byte     |      8 bytes       |      8 bytes       |       n bytes      |
 /// +----------+-----------------+--------------------+--------------------+--------------------+
@@ -66,6 +66,20 @@ impl Value {
     #[inline]
     pub fn get_version(&self) -> u64 {
         self.version
+    }
+
+    /// Returns a [`ValueRef`]
+    ///
+    /// [`ValueRef`]: struct.ValueRef.html
+    #[inline]
+    pub fn as_value_ref(&self) -> ValueRef {
+        ValueRef {
+            meta: self.get_meta(),
+            user_meta: self.get_user_meta(),
+            expires_at: self.get_expires_at(),
+            version: self.get_version(),
+            value: self.parse_value(),
+        }
     }
 }
 
@@ -136,6 +150,7 @@ impl_from_for_value! {
     BytesMut,
 }
 
+/// Extensions for `Value`
 pub trait ValueExt {
     /// Returns the value data
     fn parse_value(&self) -> &[u8];
@@ -151,20 +166,6 @@ pub trait ValueExt {
 
     /// Returns the expiration time (unix timestamp) for this value
     fn get_expires_at(&self) -> u64;
-
-    /// Returns a [`ValueRef`]
-    ///
-    /// [`ValueRef`]: struct.ValueRef.html
-    #[inline]
-    fn as_value_ref(&self) -> ValueRef {
-        ValueRef {
-            meta: self.get_meta(),
-            user_meta: self.get_user_meta(),
-            expires_at: self.get_expires_at(),
-            version: self.get_version(),
-            value: self.parse_value(),
-        }
-    }
 
     /// Returns the size of the Value when encoded
     #[inline]
@@ -247,6 +248,8 @@ pub trait ValueExt {
             value,
         }
     }
+
+    impl_psfix_suites!(ValueExt::parse_value, u8, "u8");
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
