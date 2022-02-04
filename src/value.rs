@@ -3,7 +3,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use core::mem;
-use crate::{binary_uvarint, binary_uvarint_allocate, put_binary_uvarint_to_vec};
+use crate::{binary_uvarint, binary_uvarint_allocate, put_binary_uvariant_to_vec};
 use crate::value_enc::EncodedValue;
 
 const VALUE_META_SIZE: usize = mem::size_of::<u8>() * 2 + mem::size_of::<u64>();
@@ -201,7 +201,7 @@ pub trait ValueExt {
         let mut data = Vec::with_capacity(VERSION_OFFSET);
         data.push(self.get_meta());
         data.push(self.get_user_meta());
-        put_binary_uvarint_to_vec(data.as_mut(), self.get_expires_at());
+        put_binary_uvariant_to_vec(data.as_mut(), self.get_expires_at());
 
         let expires_sz = data.len() - 2;
         let meta = Bytes::from(data);
@@ -262,16 +262,19 @@ pub struct ValueRef<'a> {
 }
 
 impl<'a> ValueRef<'a> {
+    /// Converts a slice of bytes to a string, including invalid characters.
     #[inline]
     pub fn to_string(&self) -> String {
         String::from_utf8_lossy(self.value).to_string()
     }
 
+    /// Converts a slice of bytes to a string, including invalid characters.
     #[inline]
     pub fn to_lossy_string(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(self.value)
     }
 
+    /// Copy the data to a new value
     #[inline]
     pub fn to_value(&self) -> Value {
         Value {
@@ -283,6 +286,7 @@ impl<'a> ValueRef<'a> {
         }
     }
 
+    /// Get the value version
     #[inline]
     pub fn get_version(&self) -> u64 { self.version }
 }

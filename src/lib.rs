@@ -130,24 +130,55 @@ macro_rules! impl_psfix_suites {
     };
 }
 
+macro_rules! cfg_std {
+    ($($item: item)*) => {
+        $(
+        #[cfg(feature = "std")]
+        $item
+        )*
+    };
+}
+
+#[macro_use]
 extern crate alloc;
 
 mod key;
-
-use alloc::vec::Vec;
 pub use key::*;
-
 mod key_mut;
 pub use key_mut::*;
-
 mod utils;
 mod value;
+pub use value::*;
 mod value_enc;
-pub use value_enc::EncodedValue;
+pub use value_enc::*;
 mod value_mut;
 pub use value_mut::*;
+pub mod header;
+mod entry;
+pub use entry::*;
 
-pub use value::*;
+use alloc::vec::Vec;
+use bytes::{BufMut, BytesMut};
+use bitflags::bitflags;
+
+bitflags! {
+    /// Values have their first byte being byteData or byteDelete. This helps us distinguish between
+    /// a key that has never been seen and a key that has been explicitly deleted.
+    pub struct OP: u8 {
+        #[doc = "Set if the key has been deleted."]
+        const BIT_DELETE = 1 << 0;
+        #[doc = "Set if the value is NOT stored directly next to key."]
+        const BIT_VALUE_POINTER = 1 << 1;
+        #[doc = "Set if earlier versions can be discarded."]
+        const BIT_DISCARD_EARLIER_VERSIONS = 1 << 2;
+        #[doc = "Set if item shouldn't be discarded via compactions (used by merge operator)"]
+        const BIT_MERGE_ENTRY = 1 << 3;
+        #[doc = "Set if the entry is part of a txn."]
+        const BIT_TXN = 1 << 6;
+        #[doc = "Set if the entry is to indicate end of txn in value log."]
+        const BIT_FIN_TXN = 1 << 7;
+    }
+}
 
 #[inline]
 fn u64_big_endian(b: &[u8]) -> u64 {
@@ -190,12 +221,74 @@ fn binary_uvarint(buf: &[u8]) -> (u64, usize) {
 }
 
 #[inline]
-fn put_binary_uvarint_to_vec(vec: &mut Vec<u8>, mut x: u64) {
+fn put_binary_uvariant_to_vec(vec: &mut Vec<u8>, mut x: u64) {
     while x >= 0x80 {
         vec.push((x as u8) | 0x80);
         x >>= 7;
     }
     vec.push(x as u8)
+}
+
+#[inline]
+fn binary_put_uvariant_to_bufmut(buf: &mut BytesMut, mut x: u64) -> usize {
+    let mut i = 0;
+    while x >= 0x80 {
+        buf.put_u8((x as u8) | 0x80);
+        x >>= 7;
+        i += 1;
+    }
+    buf.put_u8(x as u8);
+    i + 1
+}
+
+cfg_std! {
+    #[derive(Copy, Clone, Debug)]
+    pub struct Overflow;
+
+    impl std::fmt::Display for Overflow {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "binary: variant overflows a 64-bit integer")
+        }
+    }
+
+    impl std::error::Error for Overflow {}
+
+    impl Into<std::io::Error> for Overflow {
+        fn into(self) -> std::io::Error {
+            std::io::Error::new(std::io::ErrorKind::Other, self)
+        }
+    }
+
+    /// read_uvarint reads an encoded unsigned integer from r and returns it as a u64.
+    fn binary_read_and_put_uvarint(r: &mut impl ByteReader, dst: &mut BytesMut) -> std::io::Result<u64> {
+        let mut x = 0u64;
+        let mut s = 0usize;
+        for idx in 0..MAX_VARINT_LEN64 {
+            let b = r.read_byte()?;
+            dst.put_u8(b);
+            if b < 0x80 {
+                if idx == MAX_VARINT_LEN64 - 1 && b > 1 {
+                    return Err(Overflow.into());
+                }
+                return Ok(x | (b as u64) << s);
+            }
+            x |= ((b & 0x7f) as u64) << s;
+            s += 7;
+        }
+        Ok(x)
+    }
+}
+
+#[inline]
+fn binary_put_uvariant_to_vec(buf: &mut Vec<u8>, mut x: u64) -> usize {
+    let mut i = 0;
+    while x >= 0x80 {
+        buf.push((x as u8) | 0x80);
+        x >>= 7;
+        i += 1;
+    }
+    buf.push(x as u8);
+    i + 1
 }
 
 #[inline]
