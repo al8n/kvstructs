@@ -154,8 +154,10 @@ pub use value_enc::*;
 mod value_mut;
 pub use value_mut::*;
 pub mod header;
-mod entry;
-pub use entry::*;
+pub mod entry;
+pub mod raw_key_pointer;
+pub mod raw_value_pointer;
+pub mod raw_entry_pointer;
 
 use alloc::vec::Vec;
 use bytes::{BufMut, BytesMut};

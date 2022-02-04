@@ -8,12 +8,13 @@ pub const MAX_HEADER_SIZE: usize = 21;
 
 /// Header is used in value log as a header before Entry.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[repr(C)]
 pub struct Header {
+    meta: u8,
+    user_meta: u8,
     k_len: u32,
     v_len: u32,
     expires_at: u64,
-    meta: u8,
-    user_meta: u8,
 }
 
 impl Header {

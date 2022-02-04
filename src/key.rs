@@ -372,6 +372,20 @@ impl<'a> Ord for KeyRef<'a> {
     }
 }
 
+impl<'a> Into<&'a [u8]> for KeyRef<'a> {
+    fn into(self) -> &'a [u8] {
+        self.0
+    }
+}
+
+impl<'a> From<&'a [u8]> for KeyRef<'a> {
+    fn from(data: &'a [u8]) -> Self {
+        Self {
+            data
+        }
+    }
+}
+
 impl<'a> KeyRef<'a> {
     /// Copy KeyRef to a new Key.
     #[inline]

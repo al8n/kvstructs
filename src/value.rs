@@ -254,11 +254,11 @@ pub trait ValueExt {
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ValueRef<'a> {
-    meta: u8,
-    user_meta: u8,
-    expires_at: u64,
-    version: u64,
-    value: &'a [u8],
+    pub(crate) meta: u8,
+    pub(crate) user_meta: u8,
+    pub(crate) expires_at: u64,
+    pub(crate) version: u64,
+    pub(crate) value: &'a [u8],
 }
 
 impl<'a> ValueRef<'a> {
