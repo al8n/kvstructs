@@ -52,7 +52,9 @@ impl Into<Bytes> for Value {
 }
 
 impl Value {
-    pub fn new() -> Self {
+    /// Returns an empty value
+    #[inline]
+    pub const fn new() -> Self {
         Self {
             meta: 0,
             user_meta: 0,
@@ -74,12 +76,20 @@ impl Value {
     #[inline]
     pub fn as_value_ref(&self) -> ValueRef {
         ValueRef {
-            meta: self.get_meta(),
-            user_meta: self.get_user_meta(),
-            expires_at: self.get_expires_at(),
-            version: self.get_version(),
-            value: self.parse_value(),
+            val: self
         }
+    }
+
+    /// Returns the number of bytes contained in the value data.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.value.len()
+    }
+
+    /// Returns true if the value data has a length of 0.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.value.is_empty()
     }
 }
 
@@ -253,67 +263,64 @@ pub trait ValueExt {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct ValueRef<'a> {
-    pub(crate) meta: u8,
-    pub(crate) user_meta: u8,
-    pub(crate) expires_at: u64,
-    pub(crate) version: u64,
-    pub(crate) value: &'a [u8],
+    val: &'a Value,
 }
 
 impl<'a> ValueRef<'a> {
     /// Converts a slice of bytes to a string, including invalid characters.
     #[inline]
     pub fn to_string(&self) -> String {
-        String::from_utf8_lossy(self.value).to_string()
+        String::from_utf8_lossy(self.val.value.as_ref()).to_string()
     }
 
     /// Converts a slice of bytes to a string, including invalid characters.
     #[inline]
     pub fn to_lossy_string(&self) -> Cow<'_, str> {
-        String::from_utf8_lossy(self.value)
+        String::from_utf8_lossy(self.val.value.as_ref())
     }
 
     /// Copy the data to a new value
     #[inline]
     pub fn to_value(&self) -> Value {
         Value {
-            meta: self.meta,
-            user_meta: self.user_meta,
-            expires_at: self.expires_at,
-            version: self.version,
-            value: Bytes::copy_from_slice(self.value),
+            meta: self.val.meta,
+            user_meta: self.val.user_meta,
+            expires_at: self.val.expires_at,
+            version: self.val.version,
+            value: self.val.value.clone(),
         }
     }
 
     /// Get the value version
     #[inline]
-    pub fn get_version(&self) -> u64 { self.version }
+    pub fn get_version(&self) -> u64 { self.val.version }
 }
 
 impl<'a> ValueExt for ValueRef<'a> {
     #[inline]
     fn parse_value(&self) -> &[u8] {
-        self.value
+        self.val.value.as_ref()
     }
 
     #[inline]
     fn parse_value_to_bytes(&self) -> Bytes {
-        Bytes::copy_from_slice(self.value)
+        self.val.value.clone()
     }
 
     #[inline]
     fn get_meta(&self) -> u8 {
-        self.meta
+        self.val.meta
     }
 
     #[inline]
     fn get_user_meta(&self) -> u8 {
-        self.user_meta
+        self.val.user_meta
     }
 
     #[inline]
     fn get_expires_at(&self) -> u64 {
-        self.expires_at
+        self.val.expires_at
     }
 }

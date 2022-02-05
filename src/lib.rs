@@ -154,6 +154,7 @@ pub use value_enc::*;
 mod value_mut;
 pub use value_mut::*;
 pub mod header;
+use header::ByteReader;
 pub mod entry;
 pub mod raw_key_pointer;
 pub mod raw_value_pointer;

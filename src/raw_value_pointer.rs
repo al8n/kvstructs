@@ -23,26 +23,6 @@ impl RawValuePointer {
     pub unsafe fn new(ptr: *const u8, len: u32, expires_at: u64) -> Self {
         Self { ptr, l: len, expires_at, }
     }
-
-    /// Converts RawValuePointer to [`ValueRef`]
-    ///
-    /// # Safety
-    /// The inner raw pointer must be valid
-    ///
-    /// [`ValueRef`]: struct.ValueRef.html
-    #[inline(always)]
-    pub unsafe fn as_value_ref(&self) -> ValueRef<'_> {
-        let meta = self[0];
-        let user_meta = self[1];
-
-        ValueRef {
-            meta,
-            user_meta,
-            expires_at: self.expires_at,
-            version: 0,
-            value: &self[2..]
-        }
-    }
 }
 
 impl Deref for RawValuePointer {

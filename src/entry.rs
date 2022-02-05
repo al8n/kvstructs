@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use core::time::Duration;
-use crate::{Key, Value};
+use crate::{EncodedValue, Key, KeyExt, KeyRef, Value, ValueExt, ValueRef};
 use crate::OP;
 
 /// Entry provides Key, Value, UserMeta and ExpiresAt. This struct can be used by
@@ -17,19 +17,42 @@ pub struct Entry {
 }
 
 impl Entry {
+    /// Returns a EntryRef
+    pub fn as_entry_ref(&self) -> EntryRef {
+        EntryRef {
+            key: self.key.as_key_ref(),
+            val: self.val.as_value_ref(),
+            offset: self.offset,
+            h_len: self.h_len,
+            val_threshold: self.val_threshold,
+        }
+    }
+
+    /// Returns a new empty Entry.
+    #[inline]
+    pub const fn new() -> Self {
+        Self {
+            key: Key::new(),
+            val: Value::new(),
+            offset: 0,
+            h_len: 0,
+            val_threshold: 0,
+        }
+    }
+
     /// Creates a new entry with key and value passed in args. This newly created entry can be
     /// set in a transaction by calling txn.SetEntry(). All other properties of Entry can be set by
     /// calling with_meta, with_discard, with_ttl methods on it.
     /// This function uses key and value reference, hence users must
     /// not modify key and value until the end of transaction.
     #[inline]
-    pub fn new(key: Key, val: Value) -> Self {
+    pub fn new_from_kv(key: Key, val: Value) -> Self {
         Self {
             key,
             val,
             offset: 0,
             h_len: 0,
-            val_threshold: 0,
+            val_threshold: 0
         }
     }
 
@@ -41,7 +64,7 @@ impl Entry {
 
     /// Get the value
     #[inline]
-    pub fn get_val(&self) -> &Value {
+    pub fn get_value(&self) -> &Value {
         &self.val
     }
 
@@ -49,6 +72,12 @@ impl Entry {
     #[inline]
     pub fn get_header_len(&self) -> usize {
         self.h_len
+    }
+
+    /// Get the value threshold
+    #[inline]
+    pub fn get_value_threshold(&self) -> u64 {
+        self.val_threshold
     }
 
     /// Set the length of the header
@@ -90,10 +119,28 @@ impl Entry {
         self.val.meta = OP::BIT_MERGE_ENTRY.bits();
     }
 
+    /// Returns the length of key
+    #[inline]
+    pub fn key_len(&self) -> usize {
+        self.key.len()
+    }
+
     /// Returns whether the key is empty.
     #[inline]
     pub fn is_key_empty(&self) -> bool {
-        self.key.len() == 0
+        self.key.is_empty()
+    }
+
+    /// Returns the length of value
+    #[inline]
+    pub fn value_len(&self) -> usize {
+        self.val.len()
+    }
+
+    /// Returns whether the value is empty.
+    #[inline]
+    pub fn is_value_empty(&self) -> bool {
+        self.val.is_empty()
     }
 
     /// estimate the entry size and set the threshold
@@ -126,5 +173,11 @@ impl Entry {
     #[inline]
     pub fn leak_rawkv(self) -> (Key, Value) {
         (self.key, self.val)
+    }
+
+    /// Get the encoded value.
+    #[inline]
+    pub fn encoded_value(&self) -> EncodedValue {
+        self.val.to_encoded()
     }
 }

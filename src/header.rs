@@ -187,6 +187,8 @@ impl Header {
 }
 
 cfg_std! {
+    use std::io::Read;
+
     ///
     pub trait ByteReader {
         /// Read one byte and advance the current position
@@ -201,7 +203,8 @@ cfg_std! {
                 impl ByteReader for std::io::Cursor<$ty> {
                     #[inline]
                     fn read_byte(&mut self) -> std::io::Result<u8> {
-                        self.read_u8()
+                        let mut buf = [0; 1];
+                        self.read_exact(&mut buf).map(|_| buf[0])
                     }
 
                     #[inline]

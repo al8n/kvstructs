@@ -374,7 +374,7 @@ impl<'a> Ord for KeyRef<'a> {
 
 impl<'a> Into<&'a [u8]> for KeyRef<'a> {
     fn into(self) -> &'a [u8] {
-        self.0
+        self.data
     }
 }
 
@@ -443,6 +443,9 @@ pub trait KeyExt {
         }
     }
 
+    /// Returns the underlying slice of key (with timestamp data).
+    fn as_bytes(&self) -> &[u8];
+
     /// Parses the actual key from the key bytes.
     #[inline]
     fn parse_key(&self) -> &[u8] {
@@ -468,9 +471,6 @@ pub trait KeyExt {
             u64::MAX - u64_big_endian(&data[data_len - TIMESTAMP_SIZE..])
         }
     }
-
-    /// Returns the underlying slice of key (with timestamp data).
-    fn as_bytes(&self) -> &[u8];
 
     /// Checks for key equality ignoring the version timestamp.
     #[inline]
