@@ -6,12 +6,8 @@ use core::mem;
 use crate::{binary_uvarint, binary_uvarint_allocate, put_binary_uvariant_to_vec};
 use crate::value_enc::EncodedValue;
 
-const VALUE_META_SIZE: usize = mem::size_of::<u8>() * 2 + mem::size_of::<u64>();
-const META_OFFSET: usize = 0;
-const USER_META_OFFSET: usize = 1;
-const EXPIRATION_OFFSET: usize = 2;
-const VERSION_OFFSET: usize = 10;
-const VALUE_OFFSET: usize = 18;
+/// Max size of a value information. 1 for meta, 1 for user meta, 8 for expires_at
+const MAX_VALUE_INFO_SIZE: usize = mem::size_of::<u8>() * 2 + mem::size_of::<u64>();
 
 /// Value represents the value info that can be associated with a key, but also the internal
 /// Meta field. The data in the Value is not mutable.
@@ -42,7 +38,7 @@ pub struct Value {
 
 impl Into<Bytes> for Value {
     fn into(self) -> Bytes {
-        let mut b = BytesMut::with_capacity(VALUE_META_SIZE + self.value.len());
+        let mut b = BytesMut::with_capacity(MAX_VALUE_INFO_SIZE + self.value.len());
         b.put_u8(self.meta);
         b.put_u8(self.user_meta);
         b.put_u64(self.expires_at);
@@ -94,6 +90,8 @@ impl Value {
 }
 
 impl ValueExt for Value {
+
+
     #[inline]
     fn parse_value(&self) -> &[u8] {
         self.value.as_ref()
@@ -208,7 +206,7 @@ pub trait ValueExt {
     /// [`Value`]: struct.Value.html
     #[inline]
     fn to_encoded(&self) -> EncodedValue {
-        let mut data = Vec::with_capacity(VERSION_OFFSET);
+        let mut data = Vec::with_capacity(MAX_VALUE_INFO_SIZE);
         data.push(self.get_meta());
         data.push(self.get_user_meta());
         put_binary_uvariant_to_vec(data.as_mut(), self.get_expires_at());
@@ -265,7 +263,7 @@ pub trait ValueExt {
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ValueRef<'a> {
-    val: &'a Value,
+    pub(crate) val: &'a Value,
 }
 
 impl<'a> ValueRef<'a> {

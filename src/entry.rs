@@ -1,6 +1,4 @@
-use bytes::Bytes;
-use core::time::Duration;
-use crate::{EncodedValue, Key, KeyExt, KeyRef, Value, ValueExt, ValueRef};
+use crate::{EncodedValue, Key, Value, ValueExt};
 use crate::OP;
 
 /// Entry provides Key, Value, UserMeta and ExpiresAt. This struct can be used by
@@ -17,17 +15,6 @@ pub struct Entry {
 }
 
 impl Entry {
-    /// Returns a EntryRef
-    pub fn as_entry_ref(&self) -> EntryRef {
-        EntryRef {
-            key: self.key.as_key_ref(),
-            val: self.val.as_value_ref(),
-            offset: self.offset,
-            h_len: self.h_len,
-            val_threshold: self.val_threshold,
-        }
-    }
-
     /// Returns a new empty Entry.
     #[inline]
     pub const fn new() -> Self {

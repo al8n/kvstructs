@@ -36,7 +36,7 @@ impl RawKeyPointer {
     /// # Safety
     /// The inner raw pointer must be valid.
     #[inline(always)]
-    pub unsafe fn new(ptr: *const u8, len: u32) -> Self {
+    pub const unsafe fn new(ptr: *const u8, len: u32) -> Self {
         Self { ptr, l: len }
     }
 

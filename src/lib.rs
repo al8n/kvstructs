@@ -139,7 +139,6 @@ macro_rules! cfg_std {
     };
 }
 
-#[macro_use]
 extern crate alloc;
 
 mod key;
