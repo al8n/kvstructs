@@ -372,12 +372,6 @@ impl<'a> Ord for KeyRef<'a> {
     }
 }
 
-impl<'a> Into<&'a [u8]> for KeyRef<'a> {
-    fn into(self) -> &'a [u8] {
-        self.data
-    }
-}
-
 impl<'a> From<&'a [u8]> for KeyRef<'a> {
     fn from(data: &'a [u8]) -> Self {
         Self {
@@ -632,5 +626,35 @@ impl<'a, const N: usize> KeyExt for &'a mut [u8; N] {
     #[inline]
     fn as_bytes(&self) -> &[u8] {
         self.as_slice()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use alloc::vec;
+
+    #[test]
+    fn key_integration_test() {
+        // test key_with_ts
+        let key = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let nk = Key::from(key.clone()).with_timestamp(10);
+        assert_eq!(
+            vec![0, 1, 2, 3, 4, 5, 6, 7, 255, 255, 255, 255, 255, 255, 255, 245],
+            nk.clone()
+        );
+
+        // test parse_ts
+        assert_eq!(nk.parse_timestamp(), 10);
+
+        // test parse_key
+        let nk2 = Key::from(key).with_timestamp(1000);
+        assert_eq!(nk.parse_key(), nk2.parse_key());
+
+        // test cmp
+        assert!(nk.cmp(&nk2).is_gt());
+
+        // test same key
+        assert_eq!(nk, nk2);
     }
 }

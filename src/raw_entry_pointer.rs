@@ -21,6 +21,9 @@ pub struct RawEntryPointer {
 
 impl RawEntryPointer {
     /// Returns a new RawEntryPointer
+    ///
+    /// # Safety
+    /// The inner raw pointers must be valid.
     #[inline]
     pub const unsafe fn new(key: RawKeyPointer, val: RawValuePointer, offset: u32, h_len: usize, val_threshold: u64) -> Self {
         Self {

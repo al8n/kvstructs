@@ -22,6 +22,10 @@ impl RawValuePointer {
         Self { ptr, l: len, expires_at, }
     }
 
+    /// Returns a [`ValueRef`] according to the inner raw value pointer
+    ///
+    /// # Safety
+    /// The inner raw pointer must be valid.
     #[inline(always)]
     pub unsafe fn as_value_ref(&self) -> ValueRef {
         ValueRef {

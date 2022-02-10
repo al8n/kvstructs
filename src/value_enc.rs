@@ -1,12 +1,19 @@
 use bytes::Bytes;
 use crate::{binary_uvarint, Value, ValueExt};
-/// The position store meta in a encoded value
-const META_OFFSET: usize = 0;
-/// The position store user meta in a encoded value
-const USER_META_OFFSET: usize = 1;
-/// The position store expires_at in a encoded value
-const EXPIRATION_OFFSET: usize = 2;
 
+/// The position store meta in a encoded value
+pub const META_OFFSET: usize = 0;
+/// The position store user meta in a encoded value
+pub const USER_META_OFFSET: usize = 1;
+/// The position store expires_at in a encoded value
+pub const EXPIRATION_OFFSET: usize = 2;
+
+/// EncodedValue contains the data need to be stored in Bytes.
+///
+/// **Note**: When [`Value`] is encoded to `EncodedValue`,
+/// the version field will not be encoded.
+/// So, when convert from `EncodedValue` to [`Value`],
+/// version is always be 0.
 #[derive(Debug, Clone)]
 pub struct EncodedValue {
     pub(crate) data: Bytes,
@@ -14,26 +21,12 @@ pub struct EncodedValue {
 }
 
 impl EncodedValue {
-    pub fn decode(src: &[u8]) -> Value {
-        let meta = src[META_OFFSET];
-        let user_meta = src[USER_META_OFFSET];
-        let (expires_at, sz) = binary_uvarint(&src[EXPIRATION_OFFSET..]);
-        let value = src[EXPIRATION_OFFSET + sz..].to_vec().into();
-
-        Value {
-            meta,
-            user_meta,
-            expires_at,
-            version: 0,
-            value,
-        }
-    }
-
-    pub fn decode_bytes(src: Bytes) -> Value {
-        let meta = src[META_OFFSET];
-        let user_meta = src[USER_META_OFFSET];
-        let (expires_at, sz) = binary_uvarint(&src[EXPIRATION_OFFSET..]);
-        let value = src.slice(EXPIRATION_OFFSET + sz..);
+    /// Decode `EncodedValue` to Value (shallow copy).
+    pub fn decode_value(&self) -> Value {
+        let meta = self.data[META_OFFSET];
+        let user_meta = self.data[USER_META_OFFSET];
+        let (expires_at, sz) = binary_uvarint(&self.data[EXPIRATION_OFFSET..]);
+        let value = self.data.slice(EXPIRATION_OFFSET + sz..);
 
         Value {
             meta,

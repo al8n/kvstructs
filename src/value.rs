@@ -3,7 +3,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use core::mem;
-use crate::{binary_uvarint, binary_uvarint_allocate, put_binary_uvariant_to_vec};
+use crate::{binary_uvarint, binary_uvarint_allocate, EXPIRATION_OFFSET, META_OFFSET, put_binary_uvariant_to_vec, USER_META_OFFSET};
 use crate::value_enc::EncodedValue;
 
 /// Max size of a value information. 1 for meta, 1 for user meta, 8 for expires_at
@@ -36,13 +36,13 @@ pub struct Value {
     pub(crate) value: Bytes,
 }
 
-impl Into<Bytes> for Value {
-    fn into(self) -> Bytes {
-        let mut b = BytesMut::with_capacity(MAX_VALUE_INFO_SIZE + self.value.len());
-        b.put_u8(self.meta);
-        b.put_u8(self.user_meta);
-        b.put_u64(self.expires_at);
-        b.extend(self.value);
+impl From<Value> for Bytes {
+    fn from(v: Value) -> Self {
+        let mut b = BytesMut::with_capacity(MAX_VALUE_INFO_SIZE + v.value.len());
+        b.put_u8(v.meta);
+        b.put_u8(v.user_meta);
+        b.put_u64(v.expires_at);
+        b.extend(v.value);
         b.freeze()
     }
 }
@@ -90,8 +90,6 @@ impl Value {
 }
 
 impl ValueExt for Value {
-
-
     #[inline]
     fn parse_value(&self) -> &[u8] {
         self.value.as_ref()
@@ -116,6 +114,8 @@ impl ValueExt for Value {
     fn get_expires_at(&self) -> u64 {
         self.expires_at
     }
+
+    impl_psfix_suites!(ValueExt::parse_value, u8, "u8");
 }
 
 fn size_variant(mut x: u64) -> usize {
@@ -226,10 +226,10 @@ pub trait ValueExt {
     /// Decodes value from slice.
     #[inline]
     fn decode(src: &[u8]) -> Value {
-        let meta = src[0];
-        let user_meta = src[1];
-        let (expires_at, sz) = binary_uvarint(&src[2..]);
-        let value = src[2 + sz..].to_vec().into();
+        let meta = src[META_OFFSET];
+        let user_meta = src[USER_META_OFFSET];
+        let (expires_at, sz) = binary_uvarint(&src[EXPIRATION_OFFSET..]);
+        let value = src[EXPIRATION_OFFSET + sz..].to_vec().into();
 
         Value {
             meta,
@@ -243,10 +243,10 @@ pub trait ValueExt {
     /// Decode value from Bytes
     #[inline]
     fn decode_bytes(src: Bytes) -> Value {
-        let meta = src[0];
-        let user_meta = src[1];
-        let (expires_at, sz) = binary_uvarint(&src[2..]);
-        let value = src.slice(2 + sz..);
+        let meta = src[META_OFFSET];
+        let user_meta = src[USER_META_OFFSET];
+        let (expires_at, sz) = binary_uvarint(&src[EXPIRATION_OFFSET..]);
+        let value = src.slice(EXPIRATION_OFFSET + sz..);
 
         Value {
             meta,
@@ -260,7 +260,8 @@ pub trait ValueExt {
     impl_psfix_suites!(ValueExt::parse_value, u8, "u8");
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+/// ValueRef contains a `&'a Value`
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ValueRef<'a> {
     pub(crate) val: &'a Value,
@@ -269,6 +270,7 @@ pub struct ValueRef<'a> {
 impl<'a> ValueRef<'a> {
     /// Converts a slice of bytes to a string, including invalid characters.
     #[inline]
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         String::from_utf8_lossy(self.val.value.as_ref()).to_string()
     }

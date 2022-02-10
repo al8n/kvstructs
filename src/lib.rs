@@ -142,26 +142,37 @@ macro_rules! cfg_std {
 extern crate alloc;
 
 mod key;
-pub use key::*;
 mod key_mut;
-pub use key_mut::*;
-mod utils;
 mod value;
-pub use value::*;
 mod value_enc;
-pub use value_enc::*;
 mod value_mut;
+mod header;
+mod entry;
+mod raw_key_pointer;
+mod raw_value_pointer;
+mod raw_entry_pointer;
+/// Unsafe raw pointer for [`Key`], [`Value`], [`Entry`]
+///
+/// [`Key`]: struct.Key.html
+/// [`Value`]: struct.Value.html
+/// [`Entry`]: struct.Entry.html
+pub mod raw_pointer {
+    pub use crate::raw_entry_pointer::*;
+    pub use crate::raw_key_pointer::*;
+    pub use crate::raw_value_pointer::*;
+}
+pub use entry::*;
+pub use header::*;
+pub use key::*;
+pub use key_mut::*;
+pub use value::*;
+pub use value_enc::*;
 pub use value_mut::*;
-pub mod header;
-use header::ByteReader;
-pub mod entry;
-pub mod raw_key_pointer;
-pub mod raw_value_pointer;
-pub mod raw_entry_pointer;
 
 use alloc::vec::Vec;
 use bytes::{BufMut, BytesMut};
 use bitflags::bitflags;
+use header::ByteReader;
 
 bitflags! {
     /// Values have their first byte being byteData or byteDelete. This helps us distinguish between
@@ -201,8 +212,9 @@ const MAX_VARINT_LEN64: usize = 10;
 /// and the number of bytes n is <= 0 meaning:
 ///
 /// n == 0: buf too small
+///
 /// n  < 0: value larger than 64 bits (overflow)
-/// 	    and !n is the number of bytes read
+/// and !n is the number of bytes read
 ///
 #[inline]
 fn binary_uvarint(buf: &[u8]) -> (u64, usize) {
@@ -244,6 +256,7 @@ fn binary_put_uvariant_to_bufmut(buf: &mut BytesMut, mut x: u64) -> usize {
 }
 
 cfg_std! {
+    /// Uvariant overflows a 64-bit integer
     #[derive(Copy, Clone, Debug)]
     pub struct Overflow;
 
@@ -255,9 +268,9 @@ cfg_std! {
 
     impl std::error::Error for Overflow {}
 
-    impl Into<std::io::Error> for Overflow {
-        fn into(self) -> std::io::Error {
-            std::io::Error::new(std::io::ErrorKind::Other, self)
+    impl From<Overflow> for std::io::Error {
+        fn from(of: Overflow) -> Self {
+            std::io::Error::new(std::io::ErrorKind::Other, of)
         }
     }
 
@@ -302,12 +315,4 @@ fn binary_uvarint_allocate(mut x: u64) -> Vec<u8> {
     }
     vec.push(x as u8);
     vec
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test() {
-        eprintln!("here");
-    }
 }
