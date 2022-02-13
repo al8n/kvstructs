@@ -22,7 +22,9 @@ impl Header {
     /// function will panic if out `Vec<u8>` isn't large enough to hold all the values.
     /// The encoded header looks like
     /// +------+----------+------------+--------------+-----------+
+    ///
     /// | Meta | UserMeta | Key Length | Value Length | ExpiresAt |
+    ///
     /// +------+----------+------------+--------------+-----------+
     pub fn encode(&self) -> (usize, Vec<u8>) {
         let mut buf = Vec::with_capacity(MAX_HEADER_SIZE);
@@ -39,8 +41,11 @@ impl Header {
     /// Encodes the header into `Bytes`. The provided `Bytes` should be at least 5 bytes. The
     /// function will panic if out `Bytes` isn't large enough to hold all the values.
     /// The encoded header looks like
+    ///
     /// +------+----------+------------+--------------+-----------+
+    ///
     /// | Meta | UserMeta | Key Length | Value Length | ExpiresAt |
+    ///
     /// +------+----------+------------+--------------+-----------+
     pub fn encode_to_bytes(&self) -> (usize, Bytes) {
         let mut buf = BytesMut::with_capacity(MAX_HEADER_SIZE);
