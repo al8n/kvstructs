@@ -1,4 +1,4 @@
-use crate::{compare_key_in, same_key_in, Key, KeyExt};
+use crate::{TIMESTAMP_SIZE, compare_key_in, same_key_in, Key, KeyExt};
 use bytes::{BufMut, BytesMut};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
@@ -114,6 +114,18 @@ impl KeyMut {
     }
 }
 
+impl<'a> KeyExt for &'a KeyMut {
+    fn as_bytes(&self) -> &[u8] {
+        self.data.as_ref()
+    }
+}
+
+impl<'a> KeyExt for &'a mut KeyMut {
+    fn as_bytes(&self) -> &[u8] {
+        self.data.as_ref()
+    }
+}
+
 impl KeyExt for KeyMut {
     fn as_bytes(&self) -> &[u8] {
         self.data.as_ref()
@@ -136,6 +148,20 @@ impl KeyMutExt for KeyMut {
     }
 
     #[inline]
+    fn set_timestamp(&mut self, ts: u64) {
+        let sz = self.len();
+        match sz.checked_sub(TIMESTAMP_SIZE) {
+            None => self.data.put_u64(ts),
+            Some(sz) => self.data[sz..].copy_from_slice(ts.to_be_bytes().as_slice()),
+        }
+    }
+}
+
+impl<'a> KeyMutExt for &'a mut KeyMut {
+    fn parse_key_mut(&mut self) -> &mut [u8] {
+        self.data.as_mut()
+    }
+
     fn set_timestamp(&mut self, ts: u64) {
         let sz = self.len();
         match sz.checked_sub(TIMESTAMP_SIZE) {

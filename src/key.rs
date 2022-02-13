@@ -1,5 +1,5 @@
 use crate::key_mut::KeyMut;
-use crate::u64_big_endian;
+use crate::{TIMESTAMP_SIZE, u64_big_endian};
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -10,8 +10,6 @@ use core::hash::{Hash, Hasher};
 use core::ops::RangeBounds;
 #[cfg(feature = "std")]
 use std::time::{SystemTime, UNIX_EPOCH};
-
-const TIMESTAMP_SIZE: usize = core::mem::size_of::<u64>();
 
 /// A general Key for key-value storage, the underlying is u8 slice.
 #[derive(Debug, Clone)]
@@ -589,7 +587,6 @@ impl_key_ext! {
     BytesMut::as_ref,
     BoxBytes::as_ref,
     Key::as_ref,
-    KeyMut::as_ref,
     U8Bytes::as_ref,
     VecBytes::as_slice,
     str::as_bytes,

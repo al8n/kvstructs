@@ -174,6 +174,8 @@ use bytes::{BufMut, BytesMut};
 use bitflags::bitflags;
 use header::ByteReader;
 
+const TIMESTAMP_SIZE: usize = core::mem::size_of::<u64>();
+
 bitflags! {
     /// Values have their first byte being byteData or byteDelete. This helps us distinguish between
     /// a key that has never been seen and a key that has been explicitly deleted.
