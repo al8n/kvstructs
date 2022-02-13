@@ -1,4 +1,3 @@
-use alloc::borrow::Cow;
 use bytes::Bytes;
 use crate::{binary_uvarint, Value, ValueExt};
 
