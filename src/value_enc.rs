@@ -1,3 +1,4 @@
+use alloc::borrow::Cow;
 use bytes::Bytes;
 use crate::{binary_uvarint, Value, ValueExt};
 
@@ -36,6 +37,18 @@ impl EncodedValue {
             value,
         }
     }
+
+    /// Returns the length of encoded value
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Returns if the encoded value is empty
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
 }
 
 impl ValueExt for EncodedValue {
@@ -63,5 +76,10 @@ impl ValueExt for EncodedValue {
     fn get_expires_at(&self) -> u64 {
         let (expires_at, _) = binary_uvarint(&self.data[EXPIRATION_OFFSET..]);
         expires_at
+    }
+
+    #[inline]
+    fn to_encoded(&self) -> EncodedValue {
+        self.clone()
     }
 }
