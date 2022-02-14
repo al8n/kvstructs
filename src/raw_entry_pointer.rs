@@ -113,6 +113,6 @@ impl RawEntryPointer {
     /// The inner raw value pointer must be valid.
     #[inline]
     pub unsafe fn encoded_value(&self) -> EncodedValue {
-        self.val.to_encoded()
+        self.value().to_encoded()
     }
 }

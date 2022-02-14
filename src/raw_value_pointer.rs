@@ -1,25 +1,37 @@
 use core::ops::Deref;
-use crate::{Value, ValueRef};
+use core::ptr::null;
+use core::slice::from_raw_parts;
+use crate::ValueRef;
 
 /// RawValuePointer contains a raw pointer of the data of [`Value`]
 /// This struct is unsafe, because it does not promise the raw pointer always valid.
 ///
 /// [`Value`]: struct.Value.html
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone)]
 pub struct RawValuePointer {
-    ptr: *const Value,
-    l: u32,
-    expires_at: u64,
+    pub(crate) meta: u8,
+    pub(crate) user_meta: u8,
+    pub(crate) version: u64, // This field is not serialized. Only for internal usage.
+    pub(crate) ptr: *const u8,
+    pub(crate) l: u32,
+    pub(crate) expires_at: u64,
 }
 
 impl RawValuePointer {
-    /// Returns a RawValuePointer.
+    /// Returns a null RawValuePointer.
     ///
     /// # Safety
-    /// The inner raw pointer must be valid.
+    /// The inner raw pointer is a null raw pointer.
     #[inline(always)]
-    pub const unsafe fn new(ptr: *const Value, len: u32, expires_at: u64) -> Self {
-        Self { ptr, l: len, expires_at, }
+    pub const unsafe fn new() -> Self {
+        Self {
+            meta: 0,
+            user_meta: 0,
+            version: 0,
+            ptr: null(),
+            l: 0,
+            expires_at: 0
+        }
     }
 
     /// Returns a [`ValueRef`] according to the inner raw value pointer
@@ -27,17 +39,23 @@ impl RawValuePointer {
     /// # Safety
     /// The inner raw pointer must be valid.
     #[inline(always)]
-    pub unsafe fn as_value_ref(&self) -> ValueRef {
+    pub unsafe fn as_value_ref(&self) -> ValueRef<'_> {
         ValueRef {
-            val: &*self.ptr
+            meta: self.meta,
+            user_meta: self.user_meta,
+            expires_at: self.expires_at,
+            version: self.version,
+            val: from_raw_parts(self.ptr, self.l as usize)
         }
     }
 }
 
 impl Deref for RawValuePointer {
-    type Target = Value;
+    type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
+        unsafe {
+            from_raw_parts(self.ptr, self.l as usize)
+        }
     }
 }

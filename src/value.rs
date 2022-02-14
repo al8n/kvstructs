@@ -3,7 +3,9 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use core::mem;
+use core::slice::from_raw_parts;
 use crate::{binary_uvarint, binary_uvarint_allocate, EXPIRATION_OFFSET, META_OFFSET, put_binary_uvariant_to_vec, USER_META_OFFSET};
+use crate::raw_value_pointer::RawValuePointer;
 use crate::value_enc::EncodedValue;
 
 /// Max size of a value information. 1 for meta, 1 for user meta, 8 for expires_at
@@ -72,7 +74,11 @@ impl Value {
     #[inline]
     pub fn as_value_ref(&self) -> ValueRef {
         ValueRef {
-            val: self
+            meta: self.meta,
+            user_meta: self.user_meta,
+            expires_at: self.expires_at,
+            version: 0,
+            val: self.value.as_ref()
         }
     }
 
@@ -262,65 +268,97 @@ pub trait ValueExt {
 
 /// ValueRef contains a `&'a Value`
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(transparent)]
 pub struct ValueRef<'a> {
-    pub(crate) val: &'a Value,
+    pub(crate) meta: u8,
+    pub(crate) user_meta: u8,
+    pub(crate) expires_at: u64,
+    pub(crate) version: u64, // This field is not serialized. Only for internal usage.
+    pub(crate) val: &'a [u8],
 }
 
 impl<'a> ValueRef<'a> {
+    /// Returns a ValueRef from byte slice
+    #[inline]
+    pub const fn new(meta: u8, user_meta: u8, expires_at: u64, version: u64, data: &'a [u8]) -> Self {
+        Self {
+            meta,
+            user_meta,
+            expires_at,
+            version,
+            val: data
+        }
+    }
+
+    /// Returns a ValueRef from [`RawKeyPointer`]
+    ///
+    /// # Safety
+    /// The inner raw pointer of [`RawKeyPointer`] must be valid.
+    ///
+    /// [`RawKeyPointer`]: struct.RawKeyPointer.html
+    #[inline]
+    pub unsafe fn from_raw_value_pointer(rp: RawValuePointer) -> ValueRef<'a> {
+        ValueRef {
+            meta: rp.meta,
+            user_meta: rp.user_meta,
+            expires_at: rp.expires_at,
+            version: rp.version,
+            val: from_raw_parts(rp.ptr, rp.l as usize)
+        }
+    }
+
     /// Converts a slice of bytes to a string, including invalid characters.
     #[inline]
     #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
-        String::from_utf8_lossy(self.val.value.as_ref()).to_string()
+        String::from_utf8_lossy(self.val).to_string()
     }
 
     /// Converts a slice of bytes to a string, including invalid characters.
     #[inline]
     pub fn to_lossy_string(&self) -> Cow<'_, str> {
-        String::from_utf8_lossy(self.val.value.as_ref())
+        String::from_utf8_lossy(self.val)
     }
 
     /// Copy the data to a new value
     #[inline]
     pub fn to_value(&self) -> Value {
         Value {
-            meta: self.val.meta,
-            user_meta: self.val.user_meta,
-            expires_at: self.val.expires_at,
-            version: self.val.version,
-            value: self.val.value.clone(),
+            meta: self.meta,
+            user_meta: self.user_meta,
+            expires_at: self.expires_at,
+            version: self.version,
+            value: Bytes::copy_from_slice(self.val),
         }
     }
 
     /// Get the value version
     #[inline]
-    pub fn get_version(&self) -> u64 { self.val.version }
+    pub fn get_version(&self) -> u64 { self.version }
 }
 
 impl<'a> ValueExt for ValueRef<'a> {
     #[inline]
     fn parse_value(&self) -> &[u8] {
-        self.val.value.as_ref()
+        self.val
     }
 
     #[inline]
     fn parse_value_to_bytes(&self) -> Bytes {
-        self.val.value.clone()
+        Bytes::copy_from_slice(self.val)
     }
 
     #[inline]
     fn get_meta(&self) -> u8 {
-        self.val.meta
+        self.meta
     }
 
     #[inline]
     fn get_user_meta(&self) -> u8 {
-        self.val.user_meta
+        self.user_meta
     }
 
     #[inline]
     fn get_expires_at(&self) -> u64 {
-        self.val.expires_at
+        self.expires_at
     }
 }

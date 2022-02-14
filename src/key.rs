@@ -8,8 +8,10 @@ use bytes::{Buf, Bytes, BytesMut};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::RangeBounds;
+use core::slice::from_raw_parts;
 #[cfg(feature = "std")]
 use std::time::{SystemTime, UNIX_EPOCH};
+use crate::raw_key_pointer::RawKeyPointer;
 
 /// A general Key for key-value storage, the underlying is u8 slice.
 #[derive(Debug, Clone)]
@@ -379,6 +381,38 @@ impl<'a> From<&'a [u8]> for KeyRef<'a> {
 }
 
 impl<'a> KeyRef<'a> {
+    /// Returns a KeyRef from byte slice
+    #[inline]
+    pub const fn new(data: &'a [u8]) -> Self {
+        Self {
+            data
+        }
+    }
+
+    /// Returns a KeyRef from [`RawKeyPointer`]
+    ///
+    /// # Safety
+    /// The inner raw pointer of [`RawKeyPointer`] must be valid.
+    ///
+    /// [`RawKeyPointer`]: struct.RawKeyPointer.html
+    #[inline]
+    pub unsafe fn from_raw_key_pointer(rp: RawKeyPointer) -> Self {
+        Self {
+            data: from_raw_parts(rp.as_ptr(), rp.len()),
+        }
+    }
+
+    /// Returns a KeyRef from raw pointer and length
+    ///
+    /// # Safety
+    /// The raw pointer must be valid.
+    #[inline]
+    pub unsafe fn from_raw_pointer(ptr: *const u8, len: usize) -> Self {
+        Self {
+            data: from_raw_parts(ptr, len),
+        }
+    }
+
     /// Copy KeyRef to a new Key.
     #[inline]
     pub fn to_key(&self) -> Key {
@@ -427,6 +461,12 @@ impl KeyExt for KeyRef<'_> {
 
 /// Extensions for Key
 pub trait KeyExt {
+    /// Returns raw pointer of the underlying byte slice
+    #[inline]
+    fn as_ptr(&self) -> *const u8 {
+        self.as_bytes().as_ptr()
+    }
+
     /// Returns a KeyRef.
     #[inline]
     fn as_key_ref(&self) -> KeyRef {

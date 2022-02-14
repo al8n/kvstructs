@@ -134,6 +134,15 @@ impl KeyExt for KeyMut {
 
 /// Extensions for `KeyMut`
 pub trait KeyMutExt {
+    /// Returns the mutable underlying slice of key (with timestamp data).
+    fn as_bytes_mut(&mut self) -> &mut [u8];
+
+    /// Returns raw mutable pointer of the underlying byte slice
+    #[inline]
+    fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.as_bytes_mut().as_mut_ptr()
+    }
+
     /// Returns the mutable data slice store in ValueMut
     fn parse_key_mut(&mut self) -> &mut [u8];
 
@@ -142,6 +151,11 @@ pub trait KeyMutExt {
 }
 
 impl KeyMutExt for KeyMut {
+    #[inline]
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
+        self.data.as_mut()
+    }
+
     #[inline]
     fn parse_key_mut(&mut self) -> &mut [u8] {
         self.data.as_mut()
@@ -158,10 +172,17 @@ impl KeyMutExt for KeyMut {
 }
 
 impl<'a> KeyMutExt for &'a mut KeyMut {
+    #[inline]
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
+        self.data.as_mut()
+    }
+
+    #[inline]
     fn parse_key_mut(&mut self) -> &mut [u8] {
         self.data.as_mut()
     }
 
+    #[inline]
     fn set_timestamp(&mut self, ts: u64) {
         let sz = self.len();
         match sz.checked_sub(TIMESTAMP_SIZE) {
