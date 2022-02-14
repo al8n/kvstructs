@@ -228,10 +228,24 @@ pub trait ValueExt {
         }
     }
 
-
-    /// Decodes value from slice.
+    /// Decodes byte slice to value ref.
     #[inline]
-    fn decode(src: &[u8]) -> Value {
+    fn decode_value_ref(src: &[u8]) -> ValueRef {
+        let meta = src[META_OFFSET];
+        let user_meta = src[USER_META_OFFSET];
+        let (expires_at, sz) = binary_uvarint(&src[EXPIRATION_OFFSET..]);
+        ValueRef {
+            meta,
+            user_meta,
+            expires_at,
+            version: 0,
+            val: &src[EXPIRATION_OFFSET + sz..]
+        }
+    }
+
+    /// Decodes byte slice to value.
+    #[inline]
+    fn decode_value(src: &[u8]) -> Value {
         let meta = src[META_OFFSET];
         let user_meta = src[USER_META_OFFSET];
         let (expires_at, sz) = binary_uvarint(&src[EXPIRATION_OFFSET..]);
@@ -246,7 +260,7 @@ pub trait ValueExt {
         }
     }
 
-    /// Decode value from Bytes
+    /// Decode bytes to value. (Shallow copy)
     #[inline]
     fn decode_bytes(src: Bytes) -> Value {
         let meta = src[META_OFFSET];

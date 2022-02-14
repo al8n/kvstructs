@@ -1,6 +1,6 @@
 [package]
 name = "kvstructs"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 repository = "https://github.com/al8n/kvstructs"
 description = "General basic key-value structs for Key-Value based storages."
