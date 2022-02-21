@@ -1,12 +1,15 @@
+use crate::raw_value_pointer::RawValuePointer;
+use crate::value_enc::EncodedValue;
+use crate::{
+    binary_uvarint, binary_uvarint_allocate, put_binary_uvariant_to_vec, EXPIRATION_OFFSET,
+    META_OFFSET, USER_META_OFFSET,
+};
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use core::mem;
 use core::slice::from_raw_parts;
-use crate::{binary_uvarint, binary_uvarint_allocate, EXPIRATION_OFFSET, META_OFFSET, put_binary_uvariant_to_vec, USER_META_OFFSET};
-use crate::raw_value_pointer::RawValuePointer;
-use crate::value_enc::EncodedValue;
 
 /// Max size of a value information. 1 for meta, 1 for user meta, 8 for expires_at
 const MAX_VALUE_INFO_SIZE: usize = mem::size_of::<u8>() * 2 + mem::size_of::<u64>();
@@ -78,7 +81,7 @@ impl Value {
             user_meta: self.user_meta,
             expires_at: self.expires_at,
             version: 0,
-            val: self.value.as_ref()
+            val: self.value.as_ref(),
         }
     }
 
@@ -224,7 +227,7 @@ pub trait ValueExt {
 
         EncodedValue {
             data: meta.chain(val).copy_to_bytes(enc_len),
-            expires_sz: expires_sz as u8
+            expires_sz: expires_sz as u8,
         }
     }
 
@@ -239,7 +242,7 @@ pub trait ValueExt {
             user_meta,
             expires_at,
             version: 0,
-            val: &src[EXPIRATION_OFFSET + sz..]
+            val: &src[EXPIRATION_OFFSET + sz..],
         }
     }
 
@@ -293,13 +296,19 @@ pub struct ValueRef<'a> {
 impl<'a> ValueRef<'a> {
     /// Returns a ValueRef from byte slice
     #[inline]
-    pub const fn new(meta: u8, user_meta: u8, expires_at: u64, version: u64, data: &'a [u8]) -> Self {
+    pub const fn new(
+        meta: u8,
+        user_meta: u8,
+        expires_at: u64,
+        version: u64,
+        data: &'a [u8],
+    ) -> Self {
         Self {
             meta,
             user_meta,
             expires_at,
             version,
-            val: data
+            val: data,
         }
     }
 
@@ -316,7 +325,7 @@ impl<'a> ValueRef<'a> {
             user_meta: rp.user_meta,
             expires_at: rp.expires_at,
             version: rp.version,
-            val: from_raw_parts(rp.ptr, rp.l as usize)
+            val: from_raw_parts(rp.ptr, rp.l as usize),
         }
     }
 
@@ -347,7 +356,9 @@ impl<'a> ValueRef<'a> {
 
     /// Get the value version
     #[inline]
-    pub fn get_version(&self) -> u64 { self.version }
+    pub fn get_version(&self) -> u64 {
+        self.version
+    }
 }
 
 impl<'a> ValueExt for ValueRef<'a> {

@@ -1,5 +1,5 @@
-use crate::{EncodedValue, Key, Value, ValueExt};
 use crate::OP;
+use crate::{EncodedValue, Key, Value, ValueExt};
 
 /// Entry provides Key, Value, UserMeta and ExpiresAt. This struct can be used by
 /// the user to set data.
@@ -39,13 +39,13 @@ impl Entry {
             val,
             offset: 0,
             h_len: 0,
-            val_threshold: 0
+            val_threshold: 0,
         }
     }
 
     /// Get the key
     #[inline]
-    pub fn get_key(&self) -> &Key  {
+    pub fn get_key(&self) -> &Key {
         &self.key
     }
 

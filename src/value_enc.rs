@@ -1,5 +1,5 @@
-use bytes::Bytes;
 use crate::{binary_uvarint, Value, ValueExt};
+use bytes::Bytes;
 
 /// The position store meta in a encoded value
 pub const META_OFFSET: usize = 0;
@@ -58,7 +58,8 @@ impl ValueExt for EncodedValue {
 
     #[inline]
     fn parse_value_to_bytes(&self) -> Bytes {
-        self.data.slice((EXPIRATION_OFFSET + self.expires_sz as usize)..)
+        self.data
+            .slice((EXPIRATION_OFFSET + self.expires_sz as usize)..)
     }
 
     #[inline]

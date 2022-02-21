@@ -1,5 +1,6 @@
 use crate::key_mut::KeyMut;
-use crate::{TIMESTAMP_SIZE, u64_big_endian};
+use crate::raw_key_pointer::RawKeyPointer;
+use crate::{u64_big_endian, TIMESTAMP_SIZE};
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -11,7 +12,6 @@ use core::ops::RangeBounds;
 use core::slice::from_raw_parts;
 #[cfg(feature = "std")]
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::raw_key_pointer::RawKeyPointer;
 
 /// A general Key for key-value storage, the underlying is u8 slice.
 #[derive(Debug, Clone)]
@@ -23,13 +23,6 @@ pub struct Key {
 impl Default for Key {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl AsRef<[u8]> for Key {
-    #[inline]
-    fn as_ref(&self) -> &[u8] {
-        self.data.as_ref()
     }
 }
 
@@ -341,6 +334,12 @@ impl From<&[u8]> for Key {
     }
 }
 
+impl AsRef<[u8]> for Key {
+    fn as_ref(&self) -> &[u8] {
+        self.data.as_ref()
+    }
+}
+
 /// KeyRef can only contains a underlying u8 slice of Key
 #[derive(Debug, Copy, Clone, Hash)]
 #[repr(transparent)]
@@ -374,9 +373,7 @@ impl<'a> Ord for KeyRef<'a> {
 
 impl<'a> From<&'a [u8]> for KeyRef<'a> {
     fn from(data: &'a [u8]) -> Self {
-        Self {
-            data
-        }
+        Self { data }
     }
 }
 
@@ -384,9 +381,7 @@ impl<'a> KeyRef<'a> {
     /// Returns a KeyRef from byte slice
     #[inline]
     pub const fn new(data: &'a [u8]) -> Self {
-        Self {
-            data
-        }
+        Self { data }
     }
 
     /// Returns a KeyRef from [`RawKeyPointer`]
@@ -678,7 +673,7 @@ mod test {
         let nk = Key::from(key.clone()).with_timestamp(10);
         assert_eq!(
             vec![0, 1, 2, 3, 4, 5, 6, 7, 255, 255, 255, 255, 255, 255, 255, 245],
-            nk.clone()
+            nk
         );
 
         // test parse_ts

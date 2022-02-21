@@ -1,7 +1,7 @@
+use crate::ValueRef;
 use core::ops::Deref;
 use core::ptr::null;
 use core::slice::from_raw_parts;
-use crate::ValueRef;
 
 /// RawValuePointer contains a raw pointer of the data of [`Value`]
 /// This struct is unsafe, because it does not promise the raw pointer always valid.
@@ -30,7 +30,7 @@ impl RawValuePointer {
             version: 0,
             ptr: null(),
             l: 0,
-            expires_at: 0
+            expires_at: 0,
         }
     }
 
@@ -45,7 +45,7 @@ impl RawValuePointer {
             user_meta: self.user_meta,
             expires_at: self.expires_at,
             version: self.version,
-            val: from_raw_parts(self.ptr, self.l as usize)
+            val: from_raw_parts(self.ptr, self.l as usize),
         }
     }
 }
@@ -54,8 +54,6 @@ impl Deref for RawValuePointer {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
-        unsafe {
-            from_raw_parts(self.ptr, self.l as usize)
-        }
+        unsafe { from_raw_parts(self.ptr, self.l as usize) }
     }
 }

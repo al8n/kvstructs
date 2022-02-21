@@ -1,4 +1,4 @@
-use crate::{TIMESTAMP_SIZE, compare_key_in, same_key_in, Key, KeyExt};
+use crate::{compare_key_in, same_key_in, Key, KeyExt, TIMESTAMP_SIZE};
 use bytes::{BufMut, BytesMut};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};

@@ -1,6 +1,6 @@
+use crate::{binary_put_uvariant_to_bufmut, binary_put_uvariant_to_vec, binary_uvarint};
 use alloc::vec::Vec;
 use bytes::{BufMut, Bytes, BytesMut};
-use crate::{binary_put_uvariant_to_bufmut, binary_put_uvariant_to_vec, binary_uvarint};
 
 /// Maximum possible size of the header. The maximum size of header struct will be 18 but the
 /// maximum size of variant encoded header will be 21.
@@ -163,7 +163,7 @@ impl Header {
     /// Set the meta
     #[inline]
     pub fn set_meta(&mut self, meta: u8) {
-        self.meta  = meta
+        self.meta = meta
     }
 
     /// Get the user meta

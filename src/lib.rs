@@ -91,7 +91,7 @@ macro_rules! longest_suffix {
                 &k1[k1_len - k2_len + max - n..]
             };
         }
-    }
+    };
 }
 
 macro_rules! longest_prefix_lossy {
@@ -141,16 +141,16 @@ macro_rules! cfg_std {
 
 extern crate alloc;
 
+mod entry;
+mod header;
 mod key;
 mod key_mut;
+mod raw_entry_pointer;
+mod raw_key_pointer;
+mod raw_value_pointer;
 mod value;
 mod value_enc;
 mod value_mut;
-mod header;
-mod entry;
-mod raw_key_pointer;
-mod raw_value_pointer;
-mod raw_entry_pointer;
 /// Unsafe raw pointer for [`Key`], [`Value`], [`Entry`]
 ///
 /// [`Key`]: struct.Key.html
@@ -161,6 +161,12 @@ pub mod raw_pointer {
     pub use crate::raw_key_pointer::*;
     pub use crate::raw_value_pointer::*;
 }
+/// re-export [`bytes`] crate.
+///
+/// [`bytes`]: https://docs.rs/bytes/
+pub mod bytes {
+    pub use bytes::*;
+}
 pub use entry::*;
 pub use header::*;
 pub use key::*;
@@ -169,8 +175,8 @@ pub use value::*;
 pub use value_enc::*;
 pub use value_mut::*;
 
+use crate::bytes::{BufMut, BytesMut};
 use alloc::vec::Vec;
-use bytes::{BufMut, BytesMut};
 use bitflags::bitflags;
 use header::ByteReader;
 

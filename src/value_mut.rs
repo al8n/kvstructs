@@ -1,6 +1,6 @@
-use core::ops::{Deref, DerefMut};
-use bytes::{Bytes, BytesMut};
 use crate::ValueExt;
+use bytes::{Bytes, BytesMut};
+use core::ops::{Deref, DerefMut};
 
 /// ValueMut represents the value info that can be associated with a key, but also the internal
 /// Meta field. The data in the ValueMut is mutable.

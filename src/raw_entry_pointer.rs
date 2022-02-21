@@ -1,6 +1,6 @@
-use crate::{EncodedValue, KeyRef, ValueExt, ValueRef};
 use crate::raw_key_pointer::RawKeyPointer;
 use crate::raw_value_pointer::RawValuePointer;
+use crate::{EncodedValue, KeyRef, ValueExt, ValueRef};
 
 /// RawEntryPointer contains a raw pointer of the data slice of [`Key`]
 /// and a raw pointer of the data slice of [`Value`].
@@ -25,13 +25,19 @@ impl RawEntryPointer {
     /// # Safety
     /// The inner raw pointers must be valid.
     #[inline]
-    pub const unsafe fn new(key: RawKeyPointer, val: RawValuePointer, offset: u32, h_len: usize, val_threshold: u64) -> Self {
+    pub const unsafe fn new(
+        key: RawKeyPointer,
+        val: RawValuePointer,
+        offset: u32,
+        h_len: usize,
+        val_threshold: u64,
+    ) -> Self {
         Self {
             key,
             val,
             offset,
             h_len,
-            val_threshold
+            val_threshold,
         }
     }
 

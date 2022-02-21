@@ -1,6 +1,6 @@
+use crate::{Key, KeyExt, KeyRef};
 use core::ops::Deref;
 use core::slice;
-use crate::{Key, KeyExt, KeyRef};
 
 /// RawKeyPointer contains a raw pointer of the data slice of [`Key`]
 /// This struct is unsafe, because it does not promise the raw pointer always valid.
@@ -16,12 +16,12 @@ impl From<Key> for RawKeyPointer {
     fn from(k: Key) -> Self {
         RawKeyPointer {
             ptr: k.as_slice().as_ptr(),
-            l: k.as_slice().len() as u32
+            l: k.as_slice().len() as u32,
         }
     }
 }
 
-impl<'a> From<KeyRef<'a>> for RawKeyPointer  {
+impl<'a> From<KeyRef<'a>> for RawKeyPointer {
     fn from(k: KeyRef<'a>) -> Self {
         Self {
             ptr: k.as_slice().as_ptr(),
