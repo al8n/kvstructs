@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use bytes::{Buf, Bytes, BytesMut};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::ops::RangeBounds;
+use core::ops::{Deref, DerefMut, RangeBounds};
 use core::slice::from_raw_parts;
 #[cfg(feature = "std")]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -128,73 +128,6 @@ impl Key {
         self.data.as_ref()
     }
 
-    /// Returns a slice of self for the provided range.
-    ///
-    /// This will increment the reference count for the underlying memory and
-    /// return a new `Key` handle set to the slice.
-    ///
-    /// This operation is `O(1)`.
-    ///
-    /// # Panics
-    ///
-    /// Requires that `begin <= end` and `end <= self.len()`, otherwise slicing
-    /// will panic.
-    pub fn slice(&self, range: impl RangeBounds<usize>) -> Self {
-        Self {
-            data: self.data.slice(range),
-        }
-    }
-
-    /// Splits the key into two at the given index.
-    ///
-    /// Afterwards `self` contains elements `[0, at)`, and the returned `Key`
-    /// contains elements `[at, len)`.
-    ///
-    /// This is an `O(1)` operation that just increases the reference count and
-    /// sets a few indices.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `at > len`.
-    #[must_use = "consider Key::truncate if you don't need the other half"]
-    pub fn split_off(&mut self, at: usize) -> Self {
-        Self {
-            data: self.data.split_off(at),
-        }
-    }
-
-    /// Splits the key into two at the given index.
-    ///
-    /// Afterwards `self` contains elements `[at, len)`, and the returned
-    /// `Key` contains elements `[0, at)`.
-    ///
-    /// This is an `O(1)` operation that just increases the reference count and
-    /// sets a few indices.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `at > len`.
-    #[must_use = "consider Key::advance if you don't need the other half"]
-    pub fn split_to(&mut self, at: usize) -> Self {
-        Self {
-            data: self.data.split_to(at),
-        }
-    }
-
-    /// Shortens the buffer, keeping the first `len` bytes and dropping the
-    /// rest.
-    ///
-    /// If `len` is greater than the buffer's current length, this has no
-    /// effect.
-    ///
-    /// The [`split_off`] method can emulate `truncate`, but this causes the
-    /// excess bytes to be returned instead of dropped.
-    ///
-    /// [`split_off`]: #method.split_off
-    pub fn truncate(&mut self, len: usize) {
-        self.data.truncate(len)
-    }
-
     /// Remove the timestamp(if exists) from the key
     pub fn truncate_timestamp(&mut self) {
         if let Some(sz) = self.data.len().checked_sub(TIMESTAMP_SIZE) {
@@ -312,6 +245,20 @@ impl_from_for_key! {
     &'static str,
     Vec<u8>,
     Box<[u8]>,
+}
+
+impl Deref for Key {
+    type Target = Bytes;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Key {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 impl From<Bytes> for Key {
