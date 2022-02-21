@@ -1,3 +1,4 @@
+
 use crate::{binary_uvarint, Value, ValueExt};
 use bytes::Bytes;
 
@@ -47,6 +48,12 @@ impl EncodedValue {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
+    }
+
+    /// Returns the encoded data (including meta, user_meta, expires_at, value)
+    #[inline]
+    pub fn leak_data(self) -> Bytes {
+        self.data
     }
 }
 
