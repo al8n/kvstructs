@@ -1,4 +1,5 @@
-use crate::{Value, ValueExt};
+use alloc::borrow::Cow;
+use crate::{EncodedValue, Value, ValueExt, ValueRef};
 use bytes::{Bytes, BytesMut};
 use core::ops::{Deref, DerefMut};
 
@@ -58,6 +59,17 @@ impl DerefMut for ValueMut {
 }
 
 impl ValueExt for ValueMut {
+    #[inline]
+    fn as_value_ref(&self) -> ValueRef {
+        ValueRef {
+            meta: self.meta,
+            user_meta: self.user_meta,
+            expires_at: self.expires_at,
+            version: self.version,
+            val: self.parse_value()
+        }
+    }
+    
     #[inline]
     fn parse_value(&self) -> &[u8] {
         self.value.as_ref()

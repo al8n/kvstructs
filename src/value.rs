@@ -71,20 +71,6 @@ impl Value {
         self.version
     }
 
-    /// Returns a [`ValueRef`]
-    ///
-    /// [`ValueRef`]: struct.ValueRef.html
-    #[inline]
-    pub fn as_value_ref(&self) -> ValueRef {
-        ValueRef {
-            meta: self.meta,
-            user_meta: self.user_meta,
-            expires_at: self.expires_at,
-            version: 0,
-            val: self.value.as_ref(),
-        }
-    }
-
     /// Returns the number of bytes contained in the value data.
     #[inline]
     pub fn len(&self) -> usize {
@@ -99,6 +85,17 @@ impl Value {
 }
 
 impl ValueExt for Value {
+    #[inline]
+    fn as_value_ref(&self) -> ValueRef {
+        ValueRef {
+            meta: self.meta,
+            user_meta: self.user_meta,
+            expires_at: self.expires_at,
+            version: self.version,
+            val: self.parse_value()
+        }
+    }
+
     #[inline]
     fn parse_value(&self) -> &[u8] {
         self.value.as_ref()
@@ -169,6 +166,20 @@ impl_from_for_value! {
 
 /// Extensions for `Value`
 pub trait ValueExt {
+    /// Returns a [`ValueRef`]
+    ///
+    /// [`ValueRef`]: struct.ValueRef.html
+    #[inline]
+    fn as_value_ref(&self) -> ValueRef {
+        ValueRef {
+            meta: self.get_meta(),
+            user_meta: self.get_user_meta(),
+            expires_at: self.get_expires_at(),
+            version: 0,
+            val: self.parse_value()
+        }
+    }
+
     /// Returns the value data
     fn parse_value(&self) -> &[u8];
 
@@ -362,6 +373,11 @@ impl<'a> ValueRef<'a> {
 }
 
 impl<'a> ValueExt for ValueRef<'a> {
+    #[inline]
+    fn as_value_ref(&self) -> ValueRef {
+        *self
+    }
+
     #[inline]
     fn parse_value(&self) -> &[u8] {
         self.val
