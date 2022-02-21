@@ -1,4 +1,4 @@
-use crate::ValueExt;
+use crate::{Value, ValueExt};
 use bytes::{Bytes, BytesMut};
 use core::ops::{Deref, DerefMut};
 
@@ -27,6 +27,20 @@ pub struct ValueMut {
     pub(crate) expires_at: u64,
     pub(crate) version: u64, // This field is not serialized. Only for internal usage.
     pub(crate) value: BytesMut,
+}
+
+impl ValueMut {
+    /// Freeze to Value.
+    #[inline]
+    pub fn freeze(self) -> Value {
+        Value {
+            meta: self.meta,
+            user_meta: self.user_meta,
+            expires_at: self.expires_at,
+            version: self.version,
+            value: self.value.freeze(),
+        }
+    }
 }
 
 impl Deref for ValueMut {
