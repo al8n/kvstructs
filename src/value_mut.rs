@@ -1,5 +1,4 @@
-use alloc::borrow::Cow;
-use crate::{EncodedValue, Value, ValueExt, ValueRef};
+use crate::{Value, ValueExt, ValueRef};
 use bytes::{Bytes, BytesMut};
 use core::ops::{Deref, DerefMut};
 

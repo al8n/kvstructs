@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use bytes::{Buf, Bytes, BytesMut};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::ops::{Deref, DerefMut, RangeBounds};
+use core::ops::{Deref, DerefMut};
 use core::slice::from_raw_parts;
 #[cfg(feature = "std")]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -301,6 +301,18 @@ impl<'a, 'b> PartialEq<KeyRef<'b>> for KeyRef<'a> {
 }
 
 impl<'a> Eq for KeyRef<'a> {}
+
+impl<'a> PartialEq<Key> for KeyRef<'a> {
+    fn eq(&self, other: &Key) -> bool {
+        same_key_in(self.data, other.data.as_ref())
+    }
+}
+
+impl<'a> PartialOrd<Key> for KeyRef<'a> {
+    fn partial_cmp(&self, other: &Key) -> Option<Ordering> {
+        Some(compare_key_in(self.data, other.data.as_ref()))
+    }
+}
 
 impl<'a, 'b> PartialOrd<KeyRef<'b>> for KeyRef<'a> {
     fn partial_cmp(&self, other: &KeyRef<'b>) -> Option<Ordering> {

@@ -1,6 +1,5 @@
-
 use crate::{binary_uvarint, Value, ValueExt};
-use bytes::Bytes;
+use crate::bytes::Bytes;
 
 /// The position store meta in a encoded value
 pub const META_OFFSET: usize = 0;
@@ -90,3 +89,45 @@ impl ValueExt for EncodedValue {
         self.clone()
     }
 }
+
+macro_rules! impl_value_ext_for_bytes {
+    ($($ty: ty), +$(,)?) => {
+        $(
+        impl ValueExt for $ty {
+            #[inline]
+            fn parse_value(&self) -> &[u8] {
+                let (_, sz) = binary_uvarint(&self.as_ref()[EXPIRATION_OFFSET..]);
+
+                &self[(EXPIRATION_OFFSET + sz)..]
+            }
+
+            #[inline]
+            fn parse_value_to_bytes(&self) -> Bytes {
+                let (_, sz) = binary_uvarint(&self[EXPIRATION_OFFSET..]);
+                self.slice((EXPIRATION_OFFSET + sz)..)
+            }
+
+            #[inline]
+            fn get_meta(&self) -> u8 {
+                self[META_OFFSET]
+            }
+
+            #[inline]
+            fn get_user_meta(&self) -> u8 {
+                self[USER_META_OFFSET]
+            }
+
+            #[inline]
+            fn get_expires_at(&self) -> u64 {
+                let (expires_at, _) = binary_uvarint(&self[EXPIRATION_OFFSET..]);
+                expires_at
+            }
+        }
+        )*
+    };
+}
+
+impl_value_ext_for_bytes! {
+    Bytes,
+}
+
