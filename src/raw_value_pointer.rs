@@ -57,3 +57,11 @@ impl Deref for RawValuePointer {
         unsafe { from_raw_parts(self.ptr, self.l as usize) }
     }
 }
+
+impl PartialEq<RawValuePointer> for RawValuePointer {
+    fn eq(&self, other: &RawValuePointer) -> bool {
+        self.ptr.eq(&other.ptr)
+    }
+}
+
+impl Eq for RawValuePointer {}
