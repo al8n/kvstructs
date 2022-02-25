@@ -65,10 +65,10 @@ impl ValueExt for ValueMut {
             user_meta: self.user_meta,
             expires_at: self.expires_at,
             version: self.version,
-            val: self.parse_value()
+            val: self.parse_value(),
         }
     }
-    
+
     #[inline]
     fn parse_value(&self) -> &[u8] {
         self.value.as_ref()

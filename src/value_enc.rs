@@ -1,5 +1,5 @@
-use crate::{binary_uvarint, Value, ValueExt};
 use crate::bytes::Bytes;
+use crate::{binary_uvarint, Value, ValueExt};
 
 /// The position store meta in a encoded value
 pub const META_OFFSET: usize = 0;
@@ -130,4 +130,3 @@ macro_rules! impl_value_ext_for_bytes {
 impl_value_ext_for_bytes! {
     Bytes,
 }
-

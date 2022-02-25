@@ -92,7 +92,7 @@ impl ValueExt for Value {
             user_meta: self.user_meta,
             expires_at: self.expires_at,
             version: self.version,
-            val: self.parse_value()
+            val: self.parse_value(),
         }
     }
 
@@ -176,7 +176,7 @@ pub trait ValueExt {
             user_meta: self.get_user_meta(),
             expires_at: self.get_expires_at(),
             version: 0,
-            val: self.parse_value()
+            val: self.parse_value(),
         }
     }
 
@@ -403,4 +403,3 @@ impl<'a> ValueExt for ValueRef<'a> {
         self.expires_at
     }
 }
-

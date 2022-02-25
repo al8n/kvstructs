@@ -136,9 +136,27 @@ impl Key {
     }
 }
 
-impl PartialEq<Self> for Key {
-    fn eq(&self, other: &Self) -> bool {
-        same_key_in(self.data.as_ref(), other.data.as_ref())
+impl<'a, K: KeyExt> PartialEq<K> for KeyRef<'a> {
+    fn eq(&self, other: &K) -> bool {
+        same_key_in(self.as_bytes(), other.as_bytes())
+    }
+}
+
+impl<K: KeyExt> PartialEq<K> for Key {
+    fn eq(&self, other: &K) -> bool {
+        same_key_in(self.as_bytes(), other.as_bytes())
+    }
+}
+
+impl<K: KeyExt> PartialOrd<K> for Key {
+    fn partial_cmp(&self, other: &K) -> Option<Ordering> {
+        Some(compare_key_in(self.as_bytes(), other.as_bytes()))
+    }
+}
+
+impl<'a, K: KeyExt> PartialOrd<K> for KeyRef<'a> {
+    fn partial_cmp(&self, other: &K) -> Option<Ordering> {
+        Some(compare_key_in(self.as_bytes(), other.as_bytes()))
     }
 }
 
@@ -147,12 +165,6 @@ impl Eq for Key {}
 impl Hash for Key {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.data.hash(state)
-    }
-}
-
-impl PartialOrd<Self> for Key {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
@@ -294,31 +306,7 @@ pub struct KeyRef<'a> {
     data: &'a [u8],
 }
 
-impl<'a, 'b> PartialEq<KeyRef<'b>> for KeyRef<'a> {
-    fn eq(&self, other: &KeyRef<'b>) -> bool {
-        same_key(self, other)
-    }
-}
-
 impl<'a> Eq for KeyRef<'a> {}
-
-impl<'a> PartialEq<Key> for KeyRef<'a> {
-    fn eq(&self, other: &Key) -> bool {
-        same_key_in(self.data, other.data.as_ref())
-    }
-}
-
-impl<'a> PartialOrd<Key> for KeyRef<'a> {
-    fn partial_cmp(&self, other: &Key) -> Option<Ordering> {
-        Some(compare_key_in(self.data, other.data.as_ref()))
-    }
-}
-
-impl<'a, 'b> PartialOrd<KeyRef<'b>> for KeyRef<'a> {
-    fn partial_cmp(&self, other: &KeyRef<'b>) -> Option<Ordering> {
-        Some(compare_key(self, other))
-    }
-}
 
 impl<'a> Ord for KeyRef<'a> {
     /// Checks the key without timestamp and checks the timestamp if keyNoTs
@@ -489,23 +477,17 @@ macro_rules! impl_partial_eq_ord {
             }
         }
 
-        impl PartialEq<$ty> for Key {
-            fn eq(&self, other: &$ty) -> bool {
-                self.same_key(other)
-            }
-        }
-
         impl<'a> PartialEq<KeyRef<'a>> for $ty {
             fn eq(&self, other: &KeyRef<'a>) -> bool {
                 other.same_key(self)
             }
         }
 
-        impl<'a> PartialEq<$ty> for KeyRef<'a> {
-            fn eq(&self, other: &$ty) -> bool {
-                self.same_key(other)
-            }
-        }
+        // impl<'a> PartialEq<$ty> for KeyRef<'a> {
+        //     fn eq(&self, other: &$ty) -> bool {
+        //         self.same_key(other)
+        //     }
+        // }
 
         impl PartialOrd<Key> for $ty {
             fn partial_cmp(&self, other: &Key) -> Option<Ordering> {
@@ -513,21 +495,9 @@ macro_rules! impl_partial_eq_ord {
             }
         }
 
-        impl PartialOrd<$ty> for Key {
-            fn partial_cmp(&self, other: &$ty) -> Option<Ordering> {
-                Some(compare_key(self, other))
-            }
-        }
-
         impl<'a> PartialOrd<KeyRef<'a>> for $ty {
             fn partial_cmp(&self, other: &KeyRef<'a>) -> Option<Ordering> {
                 Some(compare_key(other, self))
-            }
-        }
-
-        impl<'a> PartialOrd<$ty> for KeyRef<'a> {
-            fn partial_cmp(&self, other: &$ty) -> Option<Ordering> {
-                Some(compare_key(self, other))
             }
         }
         )*
@@ -593,11 +563,11 @@ impl<const N: usize> PartialEq<Key> for [u8; N] {
     }
 }
 
-impl<const N: usize> PartialEq<[u8; N]> for Key {
-    fn eq(&self, other: &[u8; N]) -> bool {
-        self.same_key(other)
-    }
-}
+// impl<const N: usize> PartialEq<[u8; N]> for Key {
+//     fn eq(&self, other: &[u8; N]) -> bool {
+//         self.same_key(other)
+//     }
+// }
 
 impl<const N: usize> KeyExt for [u8; N] {
     #[inline]
