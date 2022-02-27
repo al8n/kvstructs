@@ -25,7 +25,7 @@ English | [简体中文][zh-cn-url]
 ## Installation
 ```toml
 [dependencies]
-kvstructs = "0.0.1"
+kvstructs = "0.0.15"
 ```
 
 

@@ -151,6 +151,9 @@ mod raw_value_pointer;
 mod value;
 mod value_enc;
 mod value_mut;
+/// Iterator trait
+pub mod iterator;
+
 /// Unsafe raw pointer for [`Key`], [`Value`], [`Entry`]
 ///
 /// [`Key`]: struct.Key.html
