@@ -34,11 +34,13 @@ pub trait Iterator {
     /// Returns if the current position has a valid value.
     fn valid(&self) -> bool;
 
+    /// Size hint for this iterator
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
     }
 
+    /// How many items in this iterator
     #[inline]
     fn count(&self) -> usize
         where
