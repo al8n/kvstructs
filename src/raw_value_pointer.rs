@@ -1,6 +1,5 @@
 use crate::{ValueRef, ValueExt, binary_uvarint, EXPIRATION_OFFSET};
 use core::ops::Deref;
-use core::ptr::null;
 use core::slice::from_raw_parts;
 
 /// RawValuePointer contains a raw pointer of the data of [`Value`]

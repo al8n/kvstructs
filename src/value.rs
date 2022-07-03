@@ -4,6 +4,8 @@ use crate::{
     binary_uvarint, binary_uvarint_allocate, put_binary_uvariant_to_vec, EXPIRATION_OFFSET,
     META_OFFSET, USER_META_OFFSET,
 };
+use alloc::rc::Rc;
+use alloc::sync::Arc;
 use alloc::boxed::Box;
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
@@ -404,5 +406,121 @@ impl<'a> ValueExt for ValueRef<'a> {
     #[inline]
     fn get_expires_at(&self) -> u64 {
         self.expires_at
+    }
+}
+
+impl<const N: usize> ValueExt for [u8; N] {
+    fn parse_value(&self) -> &[u8] {
+        self
+    }
+
+    fn parse_value_to_bytes(&self) -> Bytes {
+        Bytes::copy_from_slice(self)
+    }
+
+    fn get_meta(&self) -> u8 {
+        self[META_OFFSET]
+    }
+
+    fn get_user_meta(&self) -> u8 {
+        self[USER_META_OFFSET]
+    }
+
+    fn get_expires_at(&self) -> u64 {
+        let (expires_at, _) = binary_uvarint(&self[EXPIRATION_OFFSET..]);
+        expires_at
+    }
+}
+
+impl<'a> ValueExt for &'a [u8] {
+    fn parse_value(&self) -> &[u8] {
+        self
+    }
+
+    fn parse_value_to_bytes(&self) -> Bytes {
+        Bytes::copy_from_slice(self)
+    }
+
+    fn get_meta(&self) -> u8 {
+        self[META_OFFSET]
+    }
+
+    fn get_user_meta(&self) -> u8 {
+        self[USER_META_OFFSET]
+    }
+
+    fn get_expires_at(&self) -> u64 {
+        let (expires_at, _) = binary_uvarint(&self[EXPIRATION_OFFSET..]);
+        expires_at
+    }
+}
+
+impl ValueExt for Box<[u8]> {
+    fn parse_value(&self) -> &[u8] {
+        self
+    }
+
+    fn parse_value_to_bytes(&self) -> Bytes {
+        Bytes::copy_from_slice(self)
+    }
+
+    fn get_meta(&self) -> u8 {
+        self[META_OFFSET]
+    }
+
+    fn get_user_meta(&self) -> u8 {
+        self[USER_META_OFFSET]
+    }
+
+    fn get_expires_at(&self) -> u64 {
+        let (expires_at, _) = binary_uvarint(&self[EXPIRATION_OFFSET..]);
+        expires_at
+    }
+}
+
+
+impl ValueExt for Arc<[u8]> {
+    fn parse_value(&self) -> &[u8] {
+        self
+    }
+
+    fn parse_value_to_bytes(&self) -> Bytes {
+        Bytes::copy_from_slice(self)
+    }
+
+    fn get_meta(&self) -> u8 {
+        self[META_OFFSET]
+    }
+
+    fn get_user_meta(&self) -> u8 {
+        self[USER_META_OFFSET]
+    }
+
+    fn get_expires_at(&self) -> u64 {
+        let (expires_at, _) = binary_uvarint(&self[EXPIRATION_OFFSET..]);
+        expires_at
+    }
+}
+
+impl ValueExt for Rc<[u8]> {
+    fn parse_value(&self) -> &[u8] {
+        self
+    }
+
+    fn parse_value_to_bytes(&self) -> Bytes {
+        Bytes::copy_from_slice(self)
+    }
+
+    fn get_meta(&self) -> u8 {
+        self[META_OFFSET]
+    }
+
+    fn get_user_meta(&self) -> u8 {
+        self[USER_META_OFFSET]
+    }
+
+    fn get_expires_at(&self) -> u64 {
+        let (expires_at, _) = binary_uvarint(&self[EXPIRATION_OFFSET..]);
+        expires_at
     }
 }
