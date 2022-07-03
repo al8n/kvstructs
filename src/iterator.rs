@@ -20,7 +20,7 @@ pub trait Iterator<K: KeyExt, V: ValueExt> {
     fn rewind(&mut self);
 
     /// seek will reset iterator and seek to >= key.
-    fn seek(&mut self, key: K);
+    fn seek<Q: KeyExt>(&mut self, key: Q);
 
     /// Returns the entry of current position
     fn entry(&self) -> Option<(K, V)>;
