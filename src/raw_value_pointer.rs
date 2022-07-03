@@ -1,4 +1,4 @@
-use crate::ValueRef;
+use crate::{ValueRef, ValueExt, binary_uvarint, EXPIRATION_OFFSET};
 use core::ops::Deref;
 use core::ptr::null;
 use core::slice::from_raw_parts;
@@ -18,19 +18,22 @@ pub struct RawValuePointer {
 }
 
 impl RawValuePointer {
-    /// Returns a null RawValuePointer.
-    ///
+    /// Returns a RawValuePointer
+    /// 
     /// # Safety
-    /// The inner raw pointer is a null raw pointer.
-    #[inline(always)]
-    pub const unsafe fn new() -> Self {
+    /// The inner raw pointer must be valid. 
+    pub unsafe fn new(ptr: *const u8, len: u32) -> Self {
+        let buf = from_raw_parts(ptr, len as usize);
+        let (expires_at, sz) = binary_uvarint(&buf[EXPIRATION_OFFSET..]);
+        let val_len = len as usize - (EXPIRATION_OFFSET + sz);
+        
         Self {
-            meta: 0,
-            user_meta: 0,
+            meta: buf[0],
+            user_meta: buf[1],
             version: 0,
-            ptr: null(),
-            l: 0,
-            expires_at: 0,
+            ptr: ptr.add(EXPIRATION_OFFSET + sz),
+            l: val_len as u32,
+            expires_at,
         }
     }
 
@@ -47,6 +50,18 @@ impl RawValuePointer {
             version: self.version,
             val: from_raw_parts(self.ptr, self.l as usize),
         }
+    }
+
+    /// Set the version for this value
+    #[inline]
+    pub fn set_version(&mut self, version: u64) {
+        self.version = version;
+    }
+
+    /// Get the version for this value
+    #[inline]
+    pub fn get_version(&self) -> u64 {
+        self.version
     }
 }
 
@@ -65,3 +80,25 @@ impl PartialEq<RawValuePointer> for RawValuePointer {
 }
 
 impl Eq for RawValuePointer {}
+
+impl ValueExt for RawValuePointer {
+    fn parse_value(&self) -> &[u8] {
+        self
+    }
+
+    fn parse_value_to_bytes(&self) -> bytes::Bytes {
+        bytes::Bytes::copy_from_slice(self)
+    }
+
+    fn get_meta(&self) -> u8 {
+        self.meta
+    }
+
+    fn get_user_meta(&self) -> u8 {
+        self.user_meta
+    }
+
+    fn get_expires_at(&self) -> u64 {
+        self.expires_at
+    }
+}

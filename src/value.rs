@@ -184,7 +184,9 @@ pub trait ValueExt {
     /// Returns the value data
     fn parse_value(&self) -> &[u8];
 
-    /// Returns the value data, shallow copy
+    /// Returns the value data (do shallow copy, except [`RawValuePointer`][`RawValuePointer`])
+    /// 
+    /// [`RawValuePointer`]: struct.RawValuePointer.html
     fn parse_value_to_bytes(&self) -> Bytes;
 
     /// Get the meta of the value
