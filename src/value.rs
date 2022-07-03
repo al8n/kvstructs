@@ -4,6 +4,7 @@ use crate::{
     binary_uvarint, binary_uvarint_allocate, put_binary_uvariant_to_vec, EXPIRATION_OFFSET,
     META_OFFSET, USER_META_OFFSET,
 };
+use alloc::boxed::Box;
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;

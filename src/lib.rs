@@ -181,6 +181,7 @@ pub use value_mut::*;
 use crate::bytes::{BufMut, BytesMut};
 use alloc::vec::Vec;
 use bitflags::bitflags;
+#[cfg(feature = "std")]
 use header::ByteReader;
 
 const TIMESTAMP_SIZE: usize = core::mem::size_of::<u64>();

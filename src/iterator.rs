@@ -1,4 +1,4 @@
-use crate::{KeyExt, KeyRef, ValueRef};
+use crate::{KeyExt, ValueExt};
 use enum_dispatch::enum_dispatch;
 
 /// Helper struct for iterator
@@ -12,7 +12,7 @@ pub enum SeekFrom {
 
 /// Custom iterator
 #[enum_dispatch]
-pub trait Iterator {
+pub trait Iterator<K: KeyExt, V: ValueExt> {
     /// advance to next
     fn next(&mut self);
 
@@ -20,16 +20,16 @@ pub trait Iterator {
     fn rewind(&mut self);
 
     /// seek will reset iterator and seek to >= key.
-    fn seek<K: KeyExt>(&mut self, key: K);
+    fn seek(&mut self, key: K);
 
     /// Returns the entry of current position
-    fn entry(&self) -> Option<(KeyRef, ValueRef)>;
+    fn entry(&self) -> Option<(K, V)>;
 
     /// Returns the key of current position
-    fn key(&self) -> Option<KeyRef>;
+    fn key(&self) -> Option<K>;
 
     /// Returns the value of current position
-    fn val(&self) -> Option<ValueRef>;
+    fn val(&self) -> Option<V>;
 
     /// Returns if the current position has a valid value.
     fn valid(&self) -> bool;
