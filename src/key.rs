@@ -300,7 +300,7 @@ impl AsRef<[u8]> for Key {
 }
 
 /// KeyRef can only contains a underlying u8 slice of Key
-#[derive(Debug, Copy, Clone, Hash)]
+#[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
 pub struct KeyRef<'a> {
     data: &'a [u8],
@@ -398,6 +398,12 @@ impl KeyExt for KeyRef<'_> {
     #[inline]
     fn as_bytes(&self) -> &[u8] {
         self.data
+    }
+}
+
+impl Hash for KeyRef<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.data.hash(state)
     }
 }
 

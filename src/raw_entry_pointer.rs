@@ -8,6 +8,7 @@ use crate::{EncodedValue, KeyRef, ValueExt, ValueRef};
 ///
 /// [`Key`]: struct.Key.html
 /// [`Value`]: struct.Value.html
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct RawEntryPointer {
     key: RawKeyPointer,
     val: RawValuePointer,

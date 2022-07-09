@@ -19,7 +19,7 @@ use core::ops::{Deref, DerefMut};
 /// |  1 byte  |      1 byte     |      8 bytes       |      8 bytes       |       n bytes      |
 /// +----------+-----------------+--------------------+--------------------+--------------------+
 /// ```
-#[derive(Default, Debug, Eq, PartialEq, Clone)]
+#[derive(Default, Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Hash)]
 #[repr(C)]
 pub struct ValueMut {
     pub(crate) meta: u8,

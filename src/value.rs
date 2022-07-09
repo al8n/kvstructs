@@ -34,7 +34,7 @@ const MAX_VALUE_INFO_SIZE: usize = mem::size_of::<u8>() * 2 + mem::size_of::<u64
 /// |  1 byte  |      1 byte     |      8 bytes       |      8 bytes       |       n bytes      |
 /// +----------+-----------------+--------------------+--------------------+--------------------+
 /// ```
-#[derive(Default, Debug, Eq, PartialEq, Clone)]
+#[derive(Default, Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Hash)]
 #[repr(C)]
 pub struct Value {
     pub(crate) meta: u8,
@@ -300,7 +300,7 @@ pub trait ValueExt {
 }
 
 /// ValueRef contains a `&'a Value`
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ValueRef<'a> {
     pub(crate) meta: u8,
     pub(crate) user_meta: u8,

@@ -1,12 +1,14 @@
 use crate::{ValueRef, ValueExt, binary_uvarint, EXPIRATION_OFFSET};
+use core::cmp::Ordering;
 use core::ops::Deref;
+use core::hash::{Hash, Hasher};
 use core::slice::from_raw_parts;
 
 /// RawValuePointer contains a raw pointer of the data of [`Value`]
 /// This struct is unsafe, because it does not promise the raw pointer always valid.
 ///
 /// [`Value`]: struct.Value.html
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct RawValuePointer {
     pub(crate) meta: u8,
     pub(crate) user_meta: u8,
@@ -72,9 +74,15 @@ impl Deref for RawValuePointer {
     }
 }
 
+impl Hash for RawValuePointer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        unsafe { self.as_value_ref().hash(state) }
+    }
+}
+
 impl PartialEq<RawValuePointer> for RawValuePointer {
     fn eq(&self, other: &RawValuePointer) -> bool {
-        self.ptr.eq(&other.ptr)
+        unsafe { self.as_value_ref().eq(&other.as_value_ref()) }
     }
 }
 
@@ -99,5 +107,21 @@ impl ValueExt for RawValuePointer {
 
     fn get_expires_at(&self) -> u64 {
         self.expires_at
+    }
+}
+
+impl PartialOrd<RawValuePointer> for RawValuePointer {
+    fn partial_cmp(&self, other: &RawValuePointer) -> Option<Ordering> {
+        unsafe {
+            self.as_value_ref().partial_cmp(&other.as_value_ref())
+        }
+    }
+}
+
+impl Ord for RawValuePointer {
+    fn cmp(&self, other: &Self) -> Ordering {
+        unsafe {
+            self.as_value_ref().cmp(&other.as_value_ref())
+        }
     }
 }

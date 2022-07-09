@@ -14,7 +14,7 @@ pub const EXPIRATION_OFFSET: usize = 2;
 /// the version field will not be encoded.
 /// So, when convert from `EncodedValue` to [`Value`],
 /// version is always be 0.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EncodedValue {
     pub(crate) data: Bytes,
     pub(crate) expires_sz: u8,
