@@ -43,8 +43,8 @@ pub trait Iterator<K: KeyExt, V: ValueExt> {
     /// How many items in this iterator
     #[inline]
     fn count(&self) -> usize
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         match self.size_hint().1 {
             None => usize::MAX,

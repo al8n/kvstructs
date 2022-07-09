@@ -1,6 +1,6 @@
+use crate::{Key, KeyExt, KeyRef};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use crate::{Key, KeyExt, KeyRef};
 use core::ops::Deref;
 use core::slice;
 
@@ -8,7 +8,7 @@ use core::slice;
 /// This struct is unsafe, because it does not promise the raw pointer always valid.
 ///
 /// [`Key`]: struct.Key.html
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct RawKeyPointer {
     ptr: *const u8,
     l: u32,
@@ -83,16 +83,12 @@ impl Eq for RawKeyPointer {}
 
 impl PartialOrd<RawKeyPointer> for RawKeyPointer {
     fn partial_cmp(&self, other: &RawKeyPointer) -> Option<Ordering> {
-        unsafe {
-            self.as_key_ref().partial_cmp(&other.as_key_ref())
-        }
+        unsafe { self.as_key_ref().partial_cmp(&other.as_key_ref()) }
     }
 }
 
 impl Ord for RawKeyPointer {
     fn cmp(&self, other: &Self) -> Ordering {
-        unsafe {
-            self.as_key_ref().cmp(&other.as_key_ref())
-        }
+        unsafe { self.as_key_ref().cmp(&other.as_key_ref()) }
     }
 }

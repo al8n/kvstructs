@@ -143,6 +143,8 @@ extern crate alloc;
 
 mod entry;
 mod header;
+/// Iterator trait
+pub mod iterator;
 mod key;
 mod key_mut;
 mod raw_entry_pointer;
@@ -151,8 +153,6 @@ mod raw_value_pointer;
 mod value;
 mod value_enc;
 mod value_mut;
-/// Iterator trait
-pub mod iterator;
 
 /// Unsafe raw pointer for [`Key`], [`Value`], [`Entry`]
 ///

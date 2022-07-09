@@ -1,14 +1,14 @@
-use crate::{ValueRef, ValueExt, binary_uvarint, EXPIRATION_OFFSET};
+use crate::{binary_uvarint, ValueExt, ValueRef, EXPIRATION_OFFSET};
 use core::cmp::Ordering;
-use core::ops::Deref;
 use core::hash::{Hash, Hasher};
+use core::ops::Deref;
 use core::slice::from_raw_parts;
 
 /// RawValuePointer contains a raw pointer of the data of [`Value`]
 /// This struct is unsafe, because it does not promise the raw pointer always valid.
 ///
 /// [`Value`]: struct.Value.html
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct RawValuePointer {
     pub(crate) meta: u8,
     pub(crate) user_meta: u8,
@@ -20,14 +20,14 @@ pub struct RawValuePointer {
 
 impl RawValuePointer {
     /// Returns a RawValuePointer
-    /// 
+    ///
     /// # Safety
-    /// The inner raw pointer must be valid. 
+    /// The inner raw pointer must be valid.
     pub unsafe fn new(ptr: *const u8, len: u32) -> Self {
         let buf = from_raw_parts(ptr, len as usize);
         let (expires_at, sz) = binary_uvarint(&buf[EXPIRATION_OFFSET..]);
         let val_len = len as usize - (EXPIRATION_OFFSET + sz);
-        
+
         Self {
             meta: buf[0],
             user_meta: buf[1],
@@ -112,16 +112,12 @@ impl ValueExt for RawValuePointer {
 
 impl PartialOrd<RawValuePointer> for RawValuePointer {
     fn partial_cmp(&self, other: &RawValuePointer) -> Option<Ordering> {
-        unsafe {
-            self.as_value_ref().partial_cmp(&other.as_value_ref())
-        }
+        unsafe { self.as_value_ref().partial_cmp(&other.as_value_ref()) }
     }
 }
 
 impl Ord for RawValuePointer {
     fn cmp(&self, other: &Self) -> Ordering {
-        unsafe {
-            self.as_value_ref().cmp(&other.as_value_ref())
-        }
+        unsafe { self.as_value_ref().cmp(&other.as_value_ref()) }
     }
 }

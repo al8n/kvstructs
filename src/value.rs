@@ -4,11 +4,11 @@ use crate::{
     binary_uvarint, binary_uvarint_allocate, put_binary_uvariant_to_vec, EXPIRATION_OFFSET,
     META_OFFSET, USER_META_OFFSET,
 };
-use alloc::rc::Rc;
-use alloc::sync::Arc;
-use alloc::boxed::Box;
 use alloc::borrow::Cow;
+use alloc::boxed::Box;
+use alloc::rc::Rc;
 use alloc::string::{String, ToString};
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use core::mem;
@@ -187,7 +187,7 @@ pub trait ValueExt {
     fn parse_value(&self) -> &[u8];
 
     /// Returns the value data (do shallow copy, except [`RawValuePointer`][`RawValuePointer`])
-    /// 
+    ///
     /// [`RawValuePointer`]: struct.RawValuePointer.html
     fn parse_value_to_bytes(&self) -> Bytes;
 
@@ -483,7 +483,6 @@ impl ValueExt for Box<[u8]> {
         expires_at
     }
 }
-
 
 impl ValueExt for Arc<[u8]> {
     fn parse_value(&self) -> &[u8] {
