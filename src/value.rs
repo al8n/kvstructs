@@ -375,6 +375,12 @@ impl<'a> ValueRef<'a> {
     pub fn get_version(&self) -> u64 {
         self.version
     }
+
+    /// Set the value version for this value ref
+    #[inline]
+    pub fn set_version(&mut self, version: u64) {
+        self.version = version
+    }
 }
 
 impl<'a> ValueExt for ValueRef<'a> {
