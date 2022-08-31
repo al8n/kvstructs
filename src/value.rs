@@ -68,9 +68,79 @@ impl Value {
         }
     }
 
+    /// Returns a value with the given meta, user meta, expires_at, version and data.
+    #[inline]
+    pub const fn with_all_fields(
+        meta: u8,
+        user_meta: u8,
+        expires_at: u64,
+        version: u64,
+        data: Bytes,
+    ) -> Self {
+        Self {
+            meta,
+            user_meta,
+            expires_at,
+            version,
+            value: data,
+        }
+    }
+
+    /// Decodes value from bytes
+    #[inline]
+    pub fn decode_bytes(src: Bytes) -> Self {
+        let meta = src[META_OFFSET];
+        let user_meta = src[USER_META_OFFSET];
+        let (expires_at, sz) = binary_uvarint(&src[EXPIRATION_OFFSET..]);
+        let value = src.slice(EXPIRATION_OFFSET + sz..);
+
+        Self {
+            meta,
+            user_meta,
+            expires_at,
+            version: 0,
+            value,
+        }
+    }
+
+    /// Set the meta for the value
+    #[inline]
+    pub const fn set_meta(mut self, meta: u8) -> Self {
+        self.meta = meta;
+        self
+    }
+
+    /// Set the user meta for the value
+    #[inline]
+    pub const fn set_user_meta(mut self, user_meta: u8) -> Self {
+        self.user_meta = user_meta;
+        self
+    }
+
+    /// Set the expires_at for the value
+    #[inline]
+    pub const fn set_expires_at(mut self, expires_at: u64) -> Self {
+        self.expires_at = expires_at;
+        self
+    }
+
+    /// Set the version for the value
+    #[inline]
+    pub const fn set_version(mut self, version: u64) -> Self {
+        self.version = version;
+        self
+    }
+
+    /// Set the data for the value
+    #[inline]
+    pub fn set_data(mut self, value: Bytes) -> Self {
+        self.value = value;
+        self
+    }
+
     /// Returns the version for this value
     #[inline]
-    pub fn get_version(&self) -> u64 {
+    pub const fn get_version(&self) -> u64 {
         self.version
     }
 
